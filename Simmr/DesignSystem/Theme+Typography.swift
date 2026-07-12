@@ -35,5 +35,12 @@ extension Theme {
         static let caption2 = Font.custom(FontName.regular, size: 11, relativeTo: .caption2)
         /// Button label style.
         static let button = Font.custom(FontName.semiBold, size: 17, relativeTo: .body)
+
+        /// Large, readable step title for Cooking Mode.
+        static let cookingStepTitle = Font.custom(FontName.bold, size: 30, relativeTo: .title)
+        /// Large, readable step instruction body for Cooking Mode.
+        static let cookingInstruction = Font.custom(FontName.medium, size: 22, relativeTo: .title3)
+        /// Large monospaced-feel timer readout.
+        static let timerDisplay = Font.custom(FontName.extraBold, size: 44, relativeTo: .largeTitle)
     }
 }

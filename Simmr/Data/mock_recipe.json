@@ -1,0 +1,46 @@
+{
+  "title": "Creamy Garlic Parmesan Pasta",
+  "servings": 4,
+  "ingredients": [
+    { "name": "Spaghetti", "quantity": 12, "unit": "oz" },
+    { "name": "Butter", "quantity": 3, "unit": "tbsp" },
+    { "name": "Garlic cloves, minced", "quantity": 4, "unit": "cloves" },
+    { "name": "Heavy cream", "quantity": 1, "unit": "cup" },
+    { "name": "Parmesan cheese, grated", "quantity": 1, "unit": "cup" },
+    { "name": "Salt", "quantity": 1, "unit": "tsp" },
+    { "name": "Black pepper", "quantity": 0.5, "unit": "tsp" },
+    { "name": "Fresh parsley, chopped", "quantity": 2, "unit": "tbsp" }
+  ],
+  "steps": [
+    {
+      "title": "Boil the pasta",
+      "instruction": "Bring a large pot of salted water to a boil and cook the spaghetti until al dente.",
+      "timerSeconds": 600
+    },
+    {
+      "title": "Sauté the garlic",
+      "instruction": "Melt the butter in a large skillet over medium heat and sauté the minced garlic until fragrant.",
+      "timerSeconds": 120
+    },
+    {
+      "title": "Make the sauce",
+      "instruction": "Pour in the heavy cream and let it simmer gently, stirring occasionally.",
+      "timerSeconds": 300
+    },
+    {
+      "title": "Add the parmesan",
+      "instruction": "Whisk in the parmesan cheese until the sauce turns smooth and glossy.",
+      "timerSeconds": null
+    },
+    {
+      "title": "Combine and season",
+      "instruction": "Drain the pasta and toss it in the sauce. Season with salt and pepper to taste.",
+      "timerSeconds": null
+    },
+    {
+      "title": "Garnish and serve",
+      "instruction": "Top with fresh parsley and extra parmesan, then serve immediately.",
+      "timerSeconds": null
+    }
+  ]
+}
