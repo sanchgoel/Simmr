@@ -30,7 +30,7 @@ extension Theme {
         static let bodyMedium = Font.custom(FontName.medium, size: 17, relativeTo: .body)
         static let callout = Font.custom(FontName.medium, size: 16, relativeTo: .callout)
         static let subheadline = Font.custom(FontName.regular, size: 15, relativeTo: .subheadline)
-        static let footnote = Font.custom(FontName.regular, size: 13, relativeTo: .footnote)
+        static let footnote = Font.custom(FontName.regular, size: 14, relativeTo: .footnote)
         static let caption = Font.custom(FontName.medium, size: 12, relativeTo: .caption)
         static let caption2 = Font.custom(FontName.regular, size: 11, relativeTo: .caption2)
         /// Button label style.

@@ -24,6 +24,7 @@ struct CookingModeView: View {
                         .foregroundStyle(Theme.Colors.textMuted)
                     Spacer()
                 }
+                .padding(.horizontal, Theme.Spacing.lg)
             }
             .padding(.top, Theme.Spacing.sm)
 
