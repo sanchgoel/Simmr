@@ -22,10 +22,19 @@ struct GroceryChecklistView: View {
                         progressBar
                     }
 
-                    VStack(spacing: Theme.Spacing.xs) {
-                        ForEach(session.ingredients) { ingredient in
-                            IngredientRow(ingredient: ingredient) {
-                                session.toggleChecked(ingredient)
+                    ForEach(session.ingredientSections) { section in
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                            if let title = section.title {
+                                Text(title)
+                                    .font(Theme.Typography.headline)
+                                    .foregroundStyle(Theme.Colors.textDark)
+                            }
+                            VStack(spacing: Theme.Spacing.xs) {
+                                ForEach(section.ingredients) { ingredient in
+                                    IngredientRow(ingredient: ingredient) {
+                                        session.toggleChecked(ingredient)
+                                    }
+                                }
                             }
                         }
                     }

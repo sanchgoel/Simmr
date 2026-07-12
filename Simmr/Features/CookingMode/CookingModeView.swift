@@ -37,6 +37,14 @@ struct CookingModeView: View {
                         Text(viewModel.currentStep.instruction)
                             .font(Theme.Typography.cookingInstruction)
                             .foregroundStyle(Theme.Colors.textDark.opacity(0.85))
+
+                        if !viewModel.currentStep.ingredientsUsed.isEmpty {
+                            ingredientsUsedRow
+                        }
+
+                        if let tips = viewModel.currentStep.tips {
+                            tipsCallout(tips)
+                        }
                     }
 
                     if viewModel.currentStep.hasTimer {
@@ -71,6 +79,35 @@ struct CookingModeView: View {
         .navigationTitle("Cooking")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
+    }
+
+    private var ingredientsUsedRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.xs) {
+                ForEach(viewModel.currentStep.ingredientsUsed, id: \.self) { ingredient in
+                    Text(ingredient)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textDark)
+                        .padding(.horizontal, Theme.Spacing.sm)
+                        .padding(.vertical, Theme.Spacing.xxs)
+                        .background(Theme.Colors.tint)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+    }
+
+    private func tipsCallout(_ tips: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+            Image(systemName: "lightbulb.fill")
+                .foregroundStyle(Theme.Colors.amber)
+            Text(tips)
+                .font(Theme.Typography.footnote)
+                .foregroundStyle(Theme.Colors.textMuted)
+        }
+        .padding(Theme.Spacing.sm)
+        .background(Theme.Colors.creamCard)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
     }
 
     private var navigationButtons: some View {

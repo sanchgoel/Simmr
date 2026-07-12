@@ -8,7 +8,7 @@ import Foundation
 
 @MainActor
 final class CookingModeViewModel: ObservableObject {
-    let steps: [Step]
+    let steps: [RecipeStep]
 
     @Published private(set) var currentStepIndex: Int = 0
     @Published private(set) var timerRemaining: Int = 0
@@ -17,12 +17,12 @@ final class CookingModeViewModel: ObservableObject {
 
     private var timerTask: Task<Void, Never>?
 
-    init(steps: [Step]) {
+    init(steps: [RecipeStep]) {
         self.steps = steps
         resetTimer()
     }
 
-    var currentStep: Step { steps[currentStepIndex] }
+    var currentStep: RecipeStep { steps[currentStepIndex] }
     var stepNumber: Int { currentStepIndex + 1 }
     var totalSteps: Int { steps.count }
     var progress: Double { Double(stepNumber) / Double(max(totalSteps, 1)) }

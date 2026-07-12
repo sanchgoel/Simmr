@@ -26,12 +26,17 @@ final class RecipeSession: ObservableObject {
     }
 
     var title: String { recipe.title }
-    var steps: [Step] { recipe.steps }
+    var description: String? { recipe.description }
+    var steps: [RecipeStep] { recipe.steps }
     var baseServings: Int { recipe.servings }
+    var prepTimeMinutes: Int? { recipe.prepTimeMinutes }
+    var cookTimeMinutes: Int? { recipe.cookTimeMinutes }
 
     var scaleFactor: Double {
         Double(servings) / Double(max(recipe.servings, 1))
     }
+
+    var ingredientSections: [IngredientSection] { ingredients.groupedBySection }
 
     var checkedCount: Int { ingredients.filter(\.checked).count }
     var totalCount: Int { ingredients.count }
@@ -48,7 +53,9 @@ final class RecipeSession: ObservableObject {
 
         ingredients = recipe.ingredients.map { ingredient in
             var scaled = ingredient
-            scaled.quantity = roundToNearestQuarter(ingredient.quantity * factor)
+            if let quantity = ingredient.quantity {
+                scaled.quantity = roundToNearestQuarter(quantity * factor)
+            }
             scaled.checked = previousChecked[ingredient.id] ?? false
             return scaled
         }

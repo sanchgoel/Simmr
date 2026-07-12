@@ -39,8 +39,7 @@ enum AppFonts {
             if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error), let error {
                 let cfError = error.takeRetainedValue()
                 // Ignore "already registered" — harmless if register() somehow runs twice.
-                if (cfError as Error) is CFError,
-                   CFErrorGetCode(cfError) != CTFontManagerError.alreadyRegistered.rawValue {
+                if CFErrorGetCode(cfError) != CTFontManagerError.alreadyRegistered.rawValue {
                     print("Failed to register font \(name): \(cfError)")
                 }
             }

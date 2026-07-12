@@ -10,19 +10,46 @@ import Foundation
 extension Recipe {
     static var preview: Recipe {
         Recipe(
-            title: "Creamy Garlic Parmesan Pasta",
+            title: "Chicken Tikka Masala",
+            description: "Charred, marinated chicken simmered in a rich, spiced tomato-cream curry.",
             servings: 4,
+            prepTimeMinutes: 20,
+            cookTimeMinutes: 35,
             ingredients: [
-                Ingredient(name: "Spaghetti", quantity: 12, unit: "oz"),
-                Ingredient(name: "Butter", quantity: 3, unit: "tbsp"),
-                Ingredient(name: "Garlic cloves, minced", quantity: 4, unit: "cloves"),
-                Ingredient(name: "Heavy cream", quantity: 1, unit: "cup"),
-                Ingredient(name: "Parmesan cheese, grated", quantity: 1, unit: "cup"),
+                Ingredient(name: "Chicken thighs, cubed", quantity: 1.5, unit: "lb", section: "Marinade", optional: false),
+                Ingredient(name: "Plain yogurt", quantity: 0.5, unit: "cup", section: "Marinade", optional: false),
+                Ingredient(name: "Garam masala", quantity: 2, unit: "tsp", section: "Marinade", optional: false),
+                Ingredient(name: "Butter", quantity: 3, unit: "tbsp", section: "Curry", optional: false),
+                Ingredient(name: "Onion, diced", quantity: 1, unit: nil, section: "Curry", optional: false),
+                Ingredient(name: "Crushed tomatoes", quantity: 1, unit: "can", section: "Curry", optional: false),
+                Ingredient(name: "Salt", quantity: nil, unit: nil, section: "Curry", optional: false),
+                Ingredient(name: "Fresh cilantro, chopped", quantity: 2, unit: "tbsp", section: "Garnish", optional: true),
             ],
             steps: [
-                Step(title: "Boil the pasta", instruction: "Bring a large pot of salted water to a boil and cook the spaghetti until al dente.", timerSeconds: 600),
-                Step(title: "Sauté the garlic", instruction: "Melt the butter in a large skillet over medium heat and sauté the minced garlic until fragrant.", timerSeconds: 120),
-                Step(title: "Add the parmesan", instruction: "Whisk in the parmesan cheese until the sauce turns smooth and glossy.", timerSeconds: nil),
+                RecipeStep(
+                    stepNumber: 1,
+                    title: "Marinate the chicken",
+                    instruction: "Combine chicken with yogurt and garam masala. Cover and refrigerate.",
+                    ingredientsUsed: ["Chicken thighs, cubed", "Plain yogurt", "Garam masala"],
+                    timerSeconds: 1800,
+                    tips: "The longer it marinates, the more tender the chicken gets."
+                ),
+                RecipeStep(
+                    stepNumber: 2,
+                    title: "Sear the chicken",
+                    instruction: "Melt butter in a hot skillet and sear the marinated chicken until charred at the edges.",
+                    ingredientsUsed: ["Butter", "Chicken thighs, cubed"],
+                    timerSeconds: 420,
+                    tips: nil
+                ),
+                RecipeStep(
+                    stepNumber: 3,
+                    title: "Simmer the sauce",
+                    instruction: "Stir in crushed tomatoes and salt. Return the chicken to the skillet and simmer.",
+                    ingredientsUsed: ["Crushed tomatoes", "Salt", "Chicken thighs, cubed"],
+                    timerSeconds: 900,
+                    tips: "Simmer uncovered so the sauce thickens rather than staying thin."
+                ),
             ]
         )
     }

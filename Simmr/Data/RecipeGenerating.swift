@@ -2,9 +2,9 @@
 //  RecipeGenerating.swift
 //  Simmr
 //
-//  Abstraction over "turn pasted text into a Recipe". MockRecipeProvider is
-//  the only conformer today; swapping in an AI-backed parser later means
-//  writing a new conformer and changing one line at the call site.
+//  Abstraction over "turn pasted text into a Recipe". RecipeParserService
+//  (OpenAI-backed) is the live conformer; MockRecipeProvider below stays
+//  around for SwiftUI Previews and offline development.
 //
 
 import Foundation

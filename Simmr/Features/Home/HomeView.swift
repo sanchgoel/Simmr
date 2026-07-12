@@ -9,6 +9,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @State private var path: [AppRoute] = []
     @State private var session: RecipeSession?
+    @State private var isShowingSettings = false
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
@@ -17,6 +18,9 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
                     pasteField
+                    if !viewModel.hasAPIKey {
+                        apiKeyPrompt
+                    }
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
                             .font(Theme.Typography.footnote)
@@ -28,6 +32,21 @@ struct HomeView: View {
             }
             .background(Theme.Colors.creamBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(Theme.Colors.textDark)
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingSettings, onDismiss: {
+                viewModel.refreshAPIKeyStatus()
+            }) {
+                APIKeySettingsView()
+            }
             .navigationDestination(for: AppRoute.self) { route in
                 if let session {
                     switch route {
@@ -80,6 +99,26 @@ struct HomeView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
         .animation(.easeInOut(duration: 0.15), value: isTextFieldFocused)
+    }
+
+    private var apiKeyPrompt: some View {
+        Button {
+            isShowingSettings = true
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "key.fill")
+                Text("Add your OpenAI API key to generate recipes")
+                    .font(Theme.Typography.footnote)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(Theme.Colors.textDark)
+            .padding(Theme.Spacing.sm)
+            .background(Theme.Colors.tint)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var generateButton: some View {

@@ -1,46 +1,64 @@
 {
-  "title": "Creamy Garlic Parmesan Pasta",
+  "title": "Chicken Tikka Masala",
+  "description": "Charred, marinated chicken simmered in a rich, spiced tomato-cream curry.",
   "servings": 4,
+  "prepTimeMinutes": 20,
+  "cookTimeMinutes": 35,
   "ingredients": [
-    { "name": "Spaghetti", "quantity": 12, "unit": "oz" },
-    { "name": "Butter", "quantity": 3, "unit": "tbsp" },
-    { "name": "Garlic cloves, minced", "quantity": 4, "unit": "cloves" },
-    { "name": "Heavy cream", "quantity": 1, "unit": "cup" },
-    { "name": "Parmesan cheese, grated", "quantity": 1, "unit": "cup" },
-    { "name": "Salt", "quantity": 1, "unit": "tsp" },
-    { "name": "Black pepper", "quantity": 0.5, "unit": "tsp" },
-    { "name": "Fresh parsley, chopped", "quantity": 2, "unit": "tbsp" }
+    { "name": "Chicken thighs, cubed", "quantity": 1.5, "unit": "lb", "section": "Marinade", "optional": false },
+    { "name": "Plain yogurt", "quantity": 0.5, "unit": "cup", "section": "Marinade", "optional": false },
+    { "name": "Lemon juice", "quantity": 1, "unit": "tbsp", "section": "Marinade", "optional": false },
+    { "name": "Garam masala", "quantity": 2, "unit": "tsp", "section": "Marinade", "optional": false },
+    { "name": "Butter", "quantity": 3, "unit": "tbsp", "section": "Curry", "optional": false },
+    { "name": "Onion, diced", "quantity": 1, "unit": null, "section": "Curry", "optional": false },
+    { "name": "Garlic, minced", "quantity": 4, "unit": "cloves", "section": "Curry", "optional": false },
+    { "name": "Ginger, grated", "quantity": 1, "unit": "tbsp", "section": "Curry", "optional": false },
+    { "name": "Crushed tomatoes", "quantity": 1, "unit": "can", "section": "Curry", "optional": false },
+    { "name": "Heavy cream", "quantity": 0.75, "unit": "cup", "section": "Curry", "optional": false },
+    { "name": "Kashmiri chili powder", "quantity": 1, "unit": "tsp", "section": "Curry", "optional": true },
+    { "name": "Salt", "quantity": null, "unit": null, "section": "Curry", "optional": false },
+    { "name": "Fresh cilantro, chopped", "quantity": 2, "unit": "tbsp", "section": "Garnish", "optional": true }
   ],
   "steps": [
     {
-      "title": "Boil the pasta",
-      "instruction": "Bring a large pot of salted water to a boil and cook the spaghetti until al dente.",
-      "timerSeconds": 600
+      "stepNumber": 1,
+      "title": "Marinate the chicken",
+      "instruction": "Combine chicken with yogurt, lemon juice, and garam masala. Cover and refrigerate.",
+      "ingredientsUsed": ["Chicken thighs, cubed", "Plain yogurt", "Lemon juice", "Garam masala"],
+      "timerSeconds": 1800,
+      "tips": "The longer it marinates, the more tender the chicken gets — up to overnight is great."
     },
     {
-      "title": "Sauté the garlic",
-      "instruction": "Melt the butter in a large skillet over medium heat and sauté the minced garlic until fragrant.",
-      "timerSeconds": 120
+      "stepNumber": 2,
+      "title": "Sear the chicken",
+      "instruction": "Melt butter in a hot skillet and sear the marinated chicken until charred at the edges. Remove and set aside.",
+      "ingredientsUsed": ["Butter", "Chicken thighs, cubed"],
+      "timerSeconds": 420,
+      "tips": null
     },
     {
-      "title": "Make the sauce",
-      "instruction": "Pour in the heavy cream and let it simmer gently, stirring occasionally.",
-      "timerSeconds": 300
+      "stepNumber": 3,
+      "title": "Build the curry base",
+      "instruction": "In the same skillet, sauté the onion until golden, then add garlic and ginger and cook until fragrant.",
+      "ingredientsUsed": ["Onion, diced", "Garlic, minced", "Ginger, grated"],
+      "timerSeconds": null,
+      "tips": null
     },
     {
-      "title": "Add the parmesan",
-      "instruction": "Whisk in the parmesan cheese until the sauce turns smooth and glossy.",
-      "timerSeconds": null
+      "stepNumber": 4,
+      "title": "Simmer the sauce",
+      "instruction": "Stir in crushed tomatoes, cream, chili powder, and salt. Return the chicken to the skillet and simmer.",
+      "ingredientsUsed": ["Crushed tomatoes", "Heavy cream", "Kashmiri chili powder", "Salt", "Chicken thighs, cubed"],
+      "timerSeconds": 900,
+      "tips": "Simmer uncovered so the sauce thickens rather than staying thin."
     },
     {
-      "title": "Combine and season",
-      "instruction": "Drain the pasta and toss it in the sauce. Season with salt and pepper to taste.",
-      "timerSeconds": null
-    },
-    {
+      "stepNumber": 5,
       "title": "Garnish and serve",
-      "instruction": "Top with fresh parsley and extra parmesan, then serve immediately.",
-      "timerSeconds": null
+      "instruction": "Top with fresh cilantro and serve hot with rice or naan.",
+      "ingredientsUsed": ["Fresh cilantro, chopped"],
+      "timerSeconds": null,
+      "tips": null
     }
   ]
 }
