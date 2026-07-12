@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct SimmrApp: App {
+    init() {
+        AppFonts.register()
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DesignSystemPreview()
         }
     }
 }
