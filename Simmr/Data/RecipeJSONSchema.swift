@@ -25,10 +25,19 @@ enum RecipeJSONSchema {
     - Return valid JSON only, matching the provided schema exactly.
     - Preserve all ingredients and their cooking order.
     - Split long instructions into logical steps; each step is a single cooking action.
+    - Never create two steps for the same action. Each step must be materially different from \
+    the ones before and after it — do not pad the step count by splitting one action into \
+    redundant near-duplicate steps.
+    - When one sentence describes multiple sequential sub-actions that each have their own \
+    stated duration (for example "cook on high for 5-6 minutes, then lower the heat and cook \
+    covered for 10 minutes"), split it into one step per sub-action, and give each step ONLY \
+    its own duration as timerSeconds. Never reuse the same duration across more than one step, \
+    and never sum multiple stated durations into a single step's timer.
     - Generate short step titles (3-6 words).
     - Extract prep time, cook time, and servings when available. Estimate servings only if missing.
-    - Infer timerSeconds only when the recipe explicitly specifies a duration (for example \
-    "cook for 10 minutes"). Otherwise return null.
+    - Infer timerSeconds only when the recipe explicitly specifies a duration for that exact step's \
+    action (for example "cook for 10 minutes"). Otherwise return null. Double-check that a \
+    timerSeconds value matches the specific duration written for that step, not a neighboring step.
     - Preserve ingredient sections such as Marinade, Curry, Sauce, or Garnish. Use null if the \
     recipe has no sections.
     - Do not invent ingredients or quantities. Use null for a quantity or unit you cannot determine.

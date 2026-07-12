@@ -91,7 +91,7 @@ struct HomeView: View {
                 .scrollContentBackground(.hidden)
                 .padding(Theme.Spacing.sm)
         }
-        .frame(minHeight: 260)
+        .frame(height: 260)
         .background(Theme.Colors.creamCard)
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)

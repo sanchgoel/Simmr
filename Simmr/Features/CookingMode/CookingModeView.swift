@@ -84,18 +84,18 @@ struct CookingModeView: View {
     private var ingredientsUsedRow: some View {
         FlowLayout(spacing: Theme.Spacing.xs) {
             ForEach(viewModel.currentStepIngredients) { ingredient in
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Text(ingredient.name)
-                        .font(Theme.Typography.caption)
+                        .font(Theme.Typography.footnote)
                         .foregroundStyle(Theme.Colors.textDark)
                     if let quantityLabel = ingredient.quantityLabel {
                         Text(quantityLabel)
-                            .font(Theme.Typography.caption.weight(.semibold))
+                            .font(Theme.Typography.footnote.weight(.semibold))
                             .foregroundStyle(Theme.Colors.coral)
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.vertical, Theme.Spacing.xxs)
+                .padding(.vertical, Theme.Spacing.xs)
                 .background(Theme.Colors.tint)
                 .clipShape(Capsule())
             }
