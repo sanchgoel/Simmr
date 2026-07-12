@@ -10,7 +10,7 @@ struct CookingModeView: View {
     @Binding var path: [AppRoute]
 
     init(session: RecipeSession, path: Binding<[AppRoute]>) {
-        _viewModel = StateObject(wrappedValue: CookingModeViewModel(steps: session.steps))
+        _viewModel = StateObject(wrappedValue: CookingModeViewModel(steps: session.steps, ingredients: session.ingredients))
         _path = path
     }
 
@@ -38,7 +38,7 @@ struct CookingModeView: View {
                             .font(Theme.Typography.cookingInstruction)
                             .foregroundStyle(Theme.Colors.textDark.opacity(0.85))
 
-                        if !viewModel.currentStep.ingredientsUsed.isEmpty {
+                        if !viewModel.currentStepIngredients.isEmpty {
                             ingredientsUsedRow
                         }
 
@@ -82,17 +82,22 @@ struct CookingModeView: View {
     }
 
     private var ingredientsUsedRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.xs) {
-                ForEach(viewModel.currentStep.ingredientsUsed, id: \.self) { ingredient in
-                    Text(ingredient)
+        FlowLayout(spacing: Theme.Spacing.xs) {
+            ForEach(viewModel.currentStepIngredients) { ingredient in
+                HStack(spacing: 4) {
+                    Text(ingredient.name)
                         .font(Theme.Typography.caption)
                         .foregroundStyle(Theme.Colors.textDark)
-                        .padding(.horizontal, Theme.Spacing.sm)
-                        .padding(.vertical, Theme.Spacing.xxs)
-                        .background(Theme.Colors.tint)
-                        .clipShape(Capsule())
+                    if let quantityLabel = ingredient.quantityLabel {
+                        Text(quantityLabel)
+                            .font(Theme.Typography.caption.weight(.semibold))
+                            .foregroundStyle(Theme.Colors.coral)
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.sm)
+                .padding(.vertical, Theme.Spacing.xxs)
+                .background(Theme.Colors.tint)
+                .clipShape(Capsule())
             }
         }
     }

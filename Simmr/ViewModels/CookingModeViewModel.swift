@@ -8,6 +8,12 @@ import Foundation
 
 @MainActor
 final class CookingModeViewModel: ObservableObject {
+    struct UsedIngredient: Identifiable {
+        let id = UUID()
+        let name: String
+        let quantityLabel: String?
+    }
+
     let steps: [RecipeStep]
 
     @Published private(set) var currentStepIndex: Int = 0
@@ -16,9 +22,16 @@ final class CookingModeViewModel: ObservableObject {
     @Published private(set) var isTimerComplete: Bool = false
 
     private var timerTask: Task<Void, Never>?
+    /// Keyed by lowercased name so step ingredientsUsed strings can be matched
+    /// back to the recipe's (serving-scaled) ingredients for their quantity.
+    private let ingredientsByName: [String: Ingredient]
 
-    init(steps: [RecipeStep]) {
+    init(steps: [RecipeStep], ingredients: [Ingredient]) {
         self.steps = steps
+        self.ingredientsByName = Dictionary(
+            ingredients.map { ($0.name.lowercased(), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
         resetTimer()
     }
 
@@ -28,6 +41,15 @@ final class CookingModeViewModel: ObservableObject {
     var progress: Double { Double(stepNumber) / Double(max(totalSteps, 1)) }
     var isFirstStep: Bool { currentStepIndex == 0 }
     var isLastStep: Bool { currentStepIndex == totalSteps - 1 }
+
+    /// Ingredients used in the current step, resolved against the scaled recipe
+    /// ingredients so each chip can show exactly how much to add right now.
+    var currentStepIngredients: [UsedIngredient] {
+        currentStep.ingredientsUsed.map { name in
+            let match = ingredientsByName[name.lowercased()]
+            return UsedIngredient(name: match?.name ?? name, quantityLabel: match?.quantityLabel)
+        }
+    }
 
     var timerTotal: Int { currentStep.timerSeconds ?? 0 }
     var timerProgress: Double {
