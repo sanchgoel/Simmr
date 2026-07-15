@@ -15,7 +15,7 @@ struct SimmrApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            RootView()
         }
     }
 }

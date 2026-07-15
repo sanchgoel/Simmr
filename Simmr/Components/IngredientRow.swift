@@ -43,6 +43,7 @@ struct IngredientRow: View {
                 }
             }
             .padding(Theme.Spacing.sm)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(ingredient.checked ? Theme.Colors.tint : Theme.Colors.creamCard)
