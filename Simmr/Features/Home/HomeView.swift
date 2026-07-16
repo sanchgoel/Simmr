@@ -60,6 +60,13 @@ struct HomeView: View {
                 }
             }
         }
+        .overlay {
+            if viewModel.isGenerating {
+                RecipeGeneratingOverlay()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isGenerating)
     }
 
     private var header: some View {
