@@ -44,11 +44,14 @@ enum RecipeJSONSchema {
     timerSeconds value matches the specific duration written for that step, not a neighboring step.
     - Preserve ingredient sections such as Marinade, Curry, Sauce, or Garnish. Use null if the \
     recipe has no sections.
-    - Do not invent ingredients. Use null for a quantity or unit you truly cannot estimate.
-    - Never output a vague quantity such as "to taste", "as needed", or "a pinch" as the quantity \
-    or unit. Instead, estimate a specific, concrete quantity and unit appropriate for the dish and \
-    its stated servings (for example "salt to taste" becomes quantity 0.5, unit "tsp"). Only use \
-    null when there is truly no reasonable amount to infer.
+    - Do not invent ingredients that aren't in the source recipe, but ALWAYS give every ingredient \
+    a concrete quantity and unit — even when the source text states no amount at all (for example \
+    "garam masala", "black pepper powder", or "hot water" listed with no quantity). Use your \
+    culinary knowledge of the dish to estimate a sensible amount scaled to the stated servings. \
+    Vague phrases like "to taste", "as needed", or "a pinch" must also become a concrete quantity \
+    and unit (for example "salt to taste" becomes quantity 0.5, unit "tsp"). Only return null for \
+    quantity or unit in the rare case an ingredient has no reasonable numeric equivalent at all \
+    (e.g. "a few ice cubes") — this should almost never happen.
     - Mark an ingredient optional only if the source text says so (e.g. "optional", "if desired").
     - Keep instructions concise while preserving important details.
     - For each step, list the ingredient names used in that step, and spell each one EXACTLY as it \

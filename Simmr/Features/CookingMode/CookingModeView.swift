@@ -8,6 +8,7 @@ import SwiftUI
 struct CookingModeView: View {
     @StateObject private var viewModel: CookingModeViewModel
     @Binding var path: [AppRoute]
+    @Environment(\.scenePhase) private var scenePhase
 
     init(session: RecipeSession, path: Binding<[AppRoute]>) {
         _viewModel = StateObject(wrappedValue: CookingModeViewModel(steps: session.steps, ingredients: session.ingredients))
@@ -56,9 +57,13 @@ struct CookingModeView: View {
                                 progress: viewModel.timerProgress,
                                 isRunning: viewModel.isTimerRunning,
                                 isComplete: viewModel.isTimerComplete,
+                                totalMinutes: viewModel.timerTotalMinutes,
+                                canDecreaseMinute: viewModel.canDecreaseTimerMinute,
                                 onStart: viewModel.startTimer,
                                 onPause: viewModel.pauseTimer,
-                                onReset: viewModel.resetTimer
+                                onReset: viewModel.resetTimer,
+                                onIncrementMinute: viewModel.incrementTimerMinute,
+                                onDecrementMinute: viewModel.decrementTimerMinute
                             )
                             Spacer()
                         }
@@ -80,6 +85,11 @@ struct CookingModeView: View {
         .navigationTitle("Cooking")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                viewModel.refreshTimerIfNeeded()
+            }
+        }
     }
 
     private var ingredientsUsedRow: some View {

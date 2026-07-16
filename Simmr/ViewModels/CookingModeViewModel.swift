@@ -22,6 +22,14 @@ final class CookingModeViewModel: ObservableObject {
     @Published private(set) var isTimerComplete: Bool = false
 
     private var timerTask: Task<Void, Never>?
+    /// Wall-clock moment the timer should hit zero. Remaining time is always
+    /// recomputed from this rather than decremented tick-by-tick, so the
+    /// countdown stays accurate even after the app is suspended in the
+    /// background (where the sleep-based loop below doesn't get CPU time).
+    private var timerEndDate: Date?
+    /// Total duration for the current timer, adjustable via addOneMinute()
+    /// so the progress ring stays consistent after time is added.
+    private var timerTotalOverride: Int?
     /// Keyed by lowercased name so step ingredientsUsed strings can be matched
     /// back to the recipe's (serving-scaled) ingredients for their quantity.
     private let ingredientsByName: [String: Ingredient]
@@ -70,11 +78,18 @@ final class CookingModeViewModel: ObservableObject {
         }
     }
 
-    var timerTotal: Int { currentStep.timerSeconds ?? 0 }
+    var timerTotal: Int { timerTotalOverride ?? timerFloor }
     var timerProgress: Double {
         guard timerTotal > 0 else { return 0 }
         return 1 - (Double(timerRemaining) / Double(timerTotal))
     }
+
+    /// The recipe's originally stated duration for this step — the floor the
+    /// minute stepper can never go below.
+    private var timerFloor: Int { currentStep.timerSeconds ?? 0 }
+    var timerTotalMinutes: Int { Int((Double(timerTotal) / 60).rounded()) }
+    var timerFloorMinutes: Int { Int((Double(timerFloor) / 60).rounded()) }
+    var canDecreaseTimerMinute: Bool { timerTotal > timerFloor }
 
     func goToNextStep() {
         guard !isLastStep else { return }
@@ -91,18 +106,15 @@ final class CookingModeViewModel: ObservableObject {
     func startTimer() {
         guard currentStep.hasTimer, timerRemaining > 0, !isTimerRunning else { return }
         isTimerRunning = true
+        timerEndDate = Date().addingTimeInterval(TimeInterval(timerRemaining))
 
         timerTask?.cancel()
         timerTask = Task { [weak self] in
-            while let self, self.timerRemaining > 0, !Task.isCancelled {
+            while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { return }
-                self.timerRemaining -= 1
-            }
-            guard let self, !Task.isCancelled else { return }
-            self.isTimerRunning = false
-            if self.timerRemaining == 0 {
-                self.isTimerComplete = true
+                self.syncTimerToWallClock()
+                if self.timerRemaining <= 0 { return }
             }
         }
     }
@@ -111,11 +123,70 @@ final class CookingModeViewModel: ObservableObject {
         isTimerRunning = false
         timerTask?.cancel()
         timerTask = nil
+        timerEndDate = nil
     }
 
     func resetTimer() {
         pauseTimer()
+        timerTotalOverride = nil
         timerRemaining = currentStep.timerSeconds ?? 0
         isTimerComplete = false
+    }
+
+    /// Increases the configured timer duration by one minute — works whether
+    /// the timer is idle, running, or already finished. Tap repeatedly to
+    /// add more.
+    func incrementTimerMinute() {
+        guard currentStep.hasTimer else { return }
+        timerTotalOverride = timerTotal + 60
+        timerRemaining += 60
+        isTimerComplete = false
+        if isTimerRunning, let timerEndDate {
+            self.timerEndDate = timerEndDate.addingTimeInterval(60)
+        }
+    }
+
+    /// Decreases the configured timer duration by one minute, down to (but
+    /// never below) the recipe's originally stated duration for this step.
+    func decrementTimerMinute() {
+        guard currentStep.hasTimer, canDecreaseTimerMinute else { return }
+        timerTotalOverride = timerTotal - 60
+        timerRemaining = max(0, timerRemaining - 60)
+        guard isTimerRunning else { return }
+        if timerRemaining == 0 {
+            isTimerRunning = false
+            isTimerComplete = true
+            timerEndDate = nil
+            timerTask?.cancel()
+            timerTask = nil
+        } else if let timerEndDate {
+            self.timerEndDate = timerEndDate.addingTimeInterval(-60)
+        }
+    }
+
+    /// Recomputes timerRemaining from the wall-clock end date instead of
+    /// trusting the tick count, so time spent backgrounded (where this
+    /// task's sleep doesn't run) is still accounted for the moment the app
+    /// resumes.
+    private func syncTimerToWallClock() {
+        guard let timerEndDate else { return }
+        let remaining = Int(ceil(timerEndDate.timeIntervalSinceNow))
+        if remaining <= 0 {
+            timerRemaining = 0
+            isTimerRunning = false
+            isTimerComplete = true
+            self.timerEndDate = nil
+            timerTask?.cancel()
+            timerTask = nil
+        } else {
+            timerRemaining = remaining
+        }
+    }
+
+    /// Called when the app returns to the foreground so the displayed time
+    /// is correct immediately, without waiting for the next 1-second tick.
+    func refreshTimerIfNeeded() {
+        guard isTimerRunning else { return }
+        syncTimerToWallClock()
     }
 }
