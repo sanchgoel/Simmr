@@ -33,8 +33,6 @@ struct HomeView: View {
             }
             .background(Theme.Colors.creamBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Simmr")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

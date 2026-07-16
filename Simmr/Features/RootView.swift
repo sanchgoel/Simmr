@@ -10,12 +10,30 @@ import SwiftUI
 
 struct RootView: View {
     @State private var isOnboardingComplete: Bool
+    @State private var isLaunchAnimationComplete = false
 
     init() {
         _isOnboardingComplete = State(initialValue: UserDefaultsKitchenProfileStore().load()?.isComplete ?? false)
     }
 
     var body: some View {
+        ZStack {
+            if isLaunchAnimationComplete {
+                content
+                    .transition(.opacity)
+            } else {
+                LaunchAnimationView {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isLaunchAnimationComplete = true
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if isOnboardingComplete {
             HomeView()
         } else {
