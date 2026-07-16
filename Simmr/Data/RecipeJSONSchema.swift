@@ -75,6 +75,9 @@ enum RecipeJSONSchema {
     and unit (for example "salt to taste" becomes quantity 0.5, unit "tsp"). Only return null for \
     quantity or unit in the rare case an ingredient has no reasonable numeric equivalent at all \
     (e.g. "a few ice cubes") — this should almost never happen.
+    - Always write unit as one of these exact strings, normalizing whatever the source text uses: \
+    "g", "kg", "oz", "lb" (weight), "ml", "L", "tsp", "tbsp", "fl oz", "cup", "pt", "qt", "gal" \
+    (volume). Never use informal variants like "gm", "gms", "ltr", or "tbs".
     - Mark an ingredient optional only if the source text says so (e.g. "optional", "if desired").
     - Keep instructions concise while preserving important details.
     - For each step, list the ingredient names used in that step, and spell each one EXACTLY as it \

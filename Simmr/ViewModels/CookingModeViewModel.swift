@@ -12,6 +12,8 @@ final class CookingModeViewModel: ObservableObject {
         let id = UUID()
         let name: String
         let quantityLabel: String?
+        let quantity: Double?
+        let unit: String?
     }
 
     let steps: [RecipeStep]
@@ -59,7 +61,12 @@ final class CookingModeViewModel: ObservableObject {
     var currentStepIngredients: [UsedIngredient] {
         currentStep.ingredientsUsed.map { name in
             let match = resolveIngredient(named: name)
-            return UsedIngredient(name: match?.name ?? name, quantityLabel: match?.quantityLabel)
+            return UsedIngredient(
+                name: match?.name ?? name,
+                quantityLabel: match?.quantityLabel,
+                quantity: match?.quantity,
+                unit: match?.unit
+            )
         }
     }
 

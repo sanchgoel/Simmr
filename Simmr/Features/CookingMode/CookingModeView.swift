@@ -9,6 +9,7 @@ struct CookingModeView: View {
     @StateObject private var viewModel: CookingModeViewModel
     @Binding var path: [AppRoute]
     @Environment(\.scenePhase) private var scenePhase
+    @State private var converterPreset: ConverterPreset?
 
     init(session: RecipeSession, path: Binding<[AppRoute]>) {
         _viewModel = StateObject(wrappedValue: CookingModeViewModel(steps: session.steps, ingredients: session.ingredients))
@@ -85,6 +86,19 @@ struct CookingModeView: View {
         .navigationTitle("Cooking")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    converterPreset = ConverterPreset(options: convertibleOptions, selectedOptionID: convertibleOptions.first?.id)
+                } label: {
+                    Image(systemName: "arrow.triangle.swap")
+                        .foregroundStyle(Theme.Colors.textDark)
+                }
+            }
+        }
+        .sheet(item: $converterPreset) { preset in
+            UnitConverterView(options: preset.options, selectedOptionID: preset.selectedOptionID)
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 viewModel.refreshTimerIfNeeded()
@@ -95,21 +109,60 @@ struct CookingModeView: View {
     private var ingredientsUsedRow: some View {
         FlowLayout(spacing: Theme.Spacing.xs) {
             ForEach(viewModel.currentStepIngredients) { ingredient in
-                HStack(spacing: 5) {
-                    Text(ingredient.name)
-                        .font(Theme.Typography.footnote)
-                        .foregroundStyle(Theme.Colors.textDark)
-                    if let quantityLabel = ingredient.quantityLabel {
-                        Text(quantityLabel)
-                            .font(Theme.Typography.footnote.weight(.semibold))
-                            .foregroundStyle(Theme.Colors.coral)
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.vertical, Theme.Spacing.xs)
-                .background(Theme.Colors.tint)
-                .clipShape(Capsule())
+                ingredientChip(ingredient)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func ingredientChip(_ ingredient: CookingModeViewModel.UsedIngredient) -> some View {
+        if let option = convertibleOptions.first(where: { $0.name == ingredient.name }) {
+            Button {
+                converterPreset = ConverterPreset(options: convertibleOptions, selectedOptionID: option.id)
+            } label: {
+                ingredientChipLabel(ingredient, isConvertible: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            ingredientChipLabel(ingredient, isConvertible: false)
+        }
+    }
+
+    private func ingredientChipLabel(_ ingredient: CookingModeViewModel.UsedIngredient, isConvertible: Bool) -> some View {
+        HStack(spacing: 5) {
+            Text(ingredient.name)
+                .font(Theme.Typography.footnote)
+                .foregroundStyle(Theme.Colors.textDark)
+            if let quantityLabel = ingredient.quantityLabel {
+                Text(quantityLabel)
+                    .font(Theme.Typography.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.Colors.coral)
+            }
+            if isConvertible {
+                Image(systemName: "arrow.triangle.swap")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.coral.opacity(0.7))
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs)
+        .background(Theme.Colors.tint)
+        .clipShape(Capsule())
+    }
+
+    /// All of the current step's ingredients that have a recognized
+    /// weight/volume unit, in order — feeds both the toolbar converter
+    /// (defaults to the first) and each chip's tap target.
+    private var convertibleOptions: [ConvertibleIngredientOption] {
+        viewModel.currentStepIngredients.compactMap { ingredient in
+            guard let quantity = ingredient.quantity, let unitText = ingredient.unit else { return nil }
+            if let volumeUnit = VolumeUnit(matching: unitText) {
+                return ConvertibleIngredientOption(name: ingredient.name, category: .volume, quantity: quantity, volumeUnit: volumeUnit, weightUnit: nil)
+            }
+            if let weightUnit = WeightUnit(matching: unitText) {
+                return ConvertibleIngredientOption(name: ingredient.name, category: .weight, quantity: quantity, volumeUnit: nil, weightUnit: weightUnit)
+            }
+            return nil
         }
     }
 
@@ -145,6 +198,32 @@ struct CookingModeView: View {
             .buttonStyle(.primary)
         }
     }
+}
+
+/// A step ingredient with a recognized weight/volume unit, offered as a
+/// choice in the unit converter's ingredient picker.
+///
+/// `id` is derived from `name` rather than a fresh UUID, because
+/// `convertibleOptions` below is a computed property re-evaluated on every
+/// access — a random UUID would mint a new identity each time, so an ID
+/// captured from one access (e.g. a tapped chip) would never match the
+/// array passed into `ConverterPreset` moments later, and the sheet would
+/// silently fall back to the first ingredient instead of the tapped one.
+struct ConvertibleIngredientOption: Identifiable, Hashable {
+    var id: String { name }
+    let name: String
+    let category: ConversionCategory
+    let quantity: Double
+    let volumeUnit: VolumeUnit?
+    let weightUnit: WeightUnit?
+}
+
+/// Seeds the unit converter sheet with the current step's convertible
+/// ingredients (possibly empty) and which one to preselect.
+struct ConverterPreset: Identifiable {
+    let id = UUID()
+    var options: [ConvertibleIngredientOption]
+    var selectedOptionID: ConvertibleIngredientOption.ID?
 }
 
 #Preview {
