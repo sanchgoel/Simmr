@@ -39,7 +39,7 @@ extension Theme {
         /// Large, readable step title for Cooking Mode.
         static let cookingStepTitle = Font.custom(FontName.bold, size: 30, relativeTo: .title)
         /// Large, readable step instruction body for Cooking Mode.
-        static let cookingInstruction = Font.custom(FontName.medium, size: 22, relativeTo: .title3)
+        static let cookingInstruction = Font.custom(FontName.medium, size: 19, relativeTo: .body)
         /// Large monospaced-feel timer readout.
         static let timerDisplay = Font.custom(FontName.extraBold, size: 44, relativeTo: .largeTitle)
     }
