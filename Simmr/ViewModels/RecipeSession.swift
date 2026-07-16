@@ -31,6 +31,8 @@ final class RecipeSession: ObservableObject {
     var baseServings: Int { recipe.servings }
     var prepTimeMinutes: Int? { recipe.prepTimeMinutes }
     var cookTimeMinutes: Int? { recipe.cookTimeMinutes }
+    var caloriesPerServing: Int? { recipe.caloriesPerServing }
+    var optimizationSummary: String? { recipe.optimizationSummary }
 
     var scaleFactor: Double {
         Double(servings) / Double(max(recipe.servings, 1))

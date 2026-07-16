@@ -9,6 +9,7 @@ import Foundation
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published var pastedText: String = ""
+    @Published var optimizationOptions: RecipeOptimizationOptions = []
     @Published private(set) var isGenerating: Bool = false
     @Published var errorMessage: String?
     @Published private(set) var hasAPIKey: Bool
@@ -31,6 +32,14 @@ final class HomeViewModel: ObservableObject {
         !pastedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating
     }
 
+    func toggleOptimization(_ option: RecipeOptimizationOptions) {
+        if optimizationOptions.contains(option) {
+            optimizationOptions.remove(option)
+        } else {
+            optimizationOptions.insert(option)
+        }
+    }
+
     func generateRecipe() async -> Recipe? {
         guard canGenerate else { return nil }
         isGenerating = true
@@ -38,7 +47,7 @@ final class HomeViewModel: ObservableObject {
         defer { isGenerating = false }
 
         do {
-            return try await recipeProvider.generateRecipe(from: pastedText)
+            return try await recipeProvider.generateRecipe(from: pastedText, options: optimizationOptions)
         } catch let error as LocalizedError {
             errorMessage = error.errorDescription ?? "Couldn't generate a recipe. Please try again."
             return nil

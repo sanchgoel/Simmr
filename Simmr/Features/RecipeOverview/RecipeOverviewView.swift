@@ -19,6 +19,10 @@ struct RecipeOverviewView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
 
+                    if let optimizationSummary = session.optimizationSummary {
+                        optimizationCallout(optimizationSummary)
+                    }
+
                     ServingsStepper(servings: $session.servings)
                         .padding(Theme.Spacing.md)
                         .cardStyle()
@@ -74,7 +78,7 @@ struct RecipeOverviewView: View {
                     .foregroundStyle(Theme.Colors.textMuted)
             }
 
-            HStack(spacing: Theme.Spacing.sm) {
+            FlowLayout(spacing: Theme.Spacing.sm) {
                 Label("\(session.baseServings) servings", systemImage: "person.2")
                 if let prepTime = session.prepTimeMinutes {
                     Label("\(prepTime) min prep", systemImage: "timer")
@@ -82,11 +86,27 @@ struct RecipeOverviewView: View {
                 if let cookTime = session.cookTimeMinutes {
                     Label("\(cookTime) min cook", systemImage: "flame")
                 }
+                if let calories = session.caloriesPerServing {
+                    Label("\(calories) kcal", systemImage: "bolt.fill")
+                }
             }
             .font(Theme.Typography.caption)
             .foregroundStyle(Theme.Colors.textMuted)
             .padding(.top, Theme.Spacing.xxs)
         }
+    }
+
+    private func optimizationCallout(_ summary: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(Theme.Colors.coral)
+            Text(summary)
+                .font(Theme.Typography.footnote)
+                .foregroundStyle(Theme.Colors.textMuted)
+        }
+        .padding(Theme.Spacing.sm)
+        .background(Theme.Colors.tint)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
     }
 
     private var progressLabel: some View {

@@ -16,11 +16,18 @@ struct Recipe: Codable, Identifiable, Hashable {
     var servings: Int
     var prepTimeMinutes: Int?
     var cookTimeMinutes: Int?
+    /// Estimated calories per serving, not per the whole recipe — doesn't
+    /// need rescaling when the user adjusts the servings stepper.
+    var caloriesPerServing: Int?
+    /// A short note on what was adjusted to satisfy the user's selected
+    /// optimization toggles (e.g. "Used less oil and swapped in Greek
+    /// yogurt to cut calories"). Nil when no optimizations were requested.
+    var optimizationSummary: String?
     var ingredients: [Ingredient]
     var steps: [RecipeStep]
 
     private enum CodingKeys: String, CodingKey {
-        case title, description, servings, prepTimeMinutes, cookTimeMinutes, ingredients, steps
+        case title, description, servings, prepTimeMinutes, cookTimeMinutes, caloriesPerServing, optimizationSummary, ingredients, steps
     }
 }
 

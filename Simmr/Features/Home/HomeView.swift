@@ -18,6 +18,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
                     pasteField
+                    optimizationToggles
                     if !viewModel.hasAPIKey {
                         apiKeyPrompt
                     }
@@ -74,7 +75,7 @@ struct HomeView: View {
             Text("Simmr")
                 .font(Theme.Typography.largeTitle)
                 .foregroundStyle(Theme.Colors.textDark)
-            Text("Paste a recipe and let's get cooking.")
+            Text("Paste a recipe or just type a dish name — let's get cooking.")
                 .font(Theme.Typography.subheadline)
                 .foregroundStyle(Theme.Colors.textMuted)
         }
@@ -84,7 +85,7 @@ struct HomeView: View {
     private var pasteField: some View {
         ZStack(alignment: .topLeading) {
             if viewModel.pastedText.isEmpty {
-                Text("Paste a recipe here — ingredients, steps, anything you've got.")
+                Text("Paste a full recipe, or just type a dish name like \"spicy chicken curry\".")
                     .font(Theme.Typography.body)
                     .foregroundStyle(Theme.Colors.textMuted)
                     .padding(.horizontal, Theme.Spacing.sm + 4)
@@ -106,6 +107,44 @@ struct HomeView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
         .animation(.easeInOut(duration: 0.15), value: isTextFieldFocused)
+    }
+
+    private var optimizationToggles: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text("Optimize this recipe")
+                .font(Theme.Typography.headline)
+                .foregroundStyle(Theme.Colors.textDark)
+
+            FlowLayout(spacing: Theme.Spacing.xs) {
+                optimizationChip(title: "Lower calories", option: .lowerCalories)
+                optimizationChip(title: "More protein", option: .higherProtein)
+                optimizationChip(title: "Less sugar", option: .lowerSugar)
+                optimizationChip(title: "Low carb", option: .lowCarb)
+                optimizationChip(title: "Dairy free", option: .dairyFree)
+                optimizationChip(title: "More spicy", option: .spicier)
+                optimizationChip(title: "Kid friendly", option: .kidFriendly)
+            }
+        }
+    }
+
+    private func optimizationChip(title: String, option: RecipeOptimizationOptions) -> some View {
+        let isSelected = viewModel.optimizationOptions.contains(option)
+        return Button {
+            viewModel.toggleOptimization(option)
+        } label: {
+            Text(title)
+                .font(Theme.Typography.footnote.weight(.semibold))
+                .foregroundStyle(isSelected ? .white : Theme.Colors.textDark)
+                .padding(.horizontal, Theme.Spacing.sm)
+                .padding(.vertical, Theme.Spacing.xs)
+                .background(isSelected ? Theme.Colors.coral : Theme.Colors.creamCard)
+                .overlay(
+                    Capsule().strokeBorder(isSelected ? Color.clear : Theme.Colors.border, lineWidth: Theme.Stroke.regular)
+                )
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 
     private var apiKeyPrompt: some View {

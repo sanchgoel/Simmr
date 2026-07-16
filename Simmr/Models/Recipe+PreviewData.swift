@@ -15,6 +15,7 @@ extension Recipe {
             servings: 4,
             prepTimeMinutes: 20,
             cookTimeMinutes: 35,
+            caloriesPerServing: 480,
             ingredients: [
                 Ingredient(name: "Chicken thighs, cubed", quantity: 1.5, unit: "lb", section: "Marinade", optional: false),
                 Ingredient(name: "Plain yogurt", quantity: 0.5, unit: "cup", section: "Marinade", optional: false),

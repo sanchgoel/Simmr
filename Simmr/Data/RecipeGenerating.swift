@@ -10,7 +10,7 @@
 import Foundation
 
 protocol RecipeGenerating {
-    func generateRecipe(from pastedText: String) async throws -> Recipe
+    func generateRecipe(from pastedText: String, options: RecipeOptimizationOptions) async throws -> Recipe
 }
 
 enum RecipeGeneratingError: Error {
@@ -19,9 +19,9 @@ enum RecipeGeneratingError: Error {
 }
 
 struct MockRecipeProvider: RecipeGenerating {
-    /// Ignores `pastedText` for now and returns a bundled mock recipe after
-    /// a short simulated delay so the loading state is visible.
-    func generateRecipe(from pastedText: String) async throws -> Recipe {
+    /// Ignores `pastedText` and `options` for now and returns a bundled mock
+    /// recipe after a short simulated delay so the loading state is visible.
+    func generateRecipe(from pastedText: String, options: RecipeOptimizationOptions) async throws -> Recipe {
         try await Task.sleep(nanoseconds: 500_000_000)
 
         guard let url = Bundle.main.url(forResource: "mock_recipe", withExtension: "json") else {

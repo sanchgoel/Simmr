@@ -19,7 +19,16 @@ enum RecipeJSONSchema {
     static let schemaName = "recipe"
 
     static let systemPrompt = """
-    You are an expert culinary recipe parser. Convert any recipe into structured JSON.
+    You are an expert culinary recipe parser and generator. Convert the input into a complete, \
+    structured recipe as JSON.
+
+    The input is either:
+    1. A full recipe (ingredients + instructions) — parse and structure it faithfully.
+    2. Just a dish name or short description (for example "chicken tikka masala" or "a quick \
+    vegan stir fry") — in this case there is no recipe text to parse, so use your own culinary \
+    knowledge to author a complete, realistic recipe for that dish from scratch: sensible \
+    ingredients with quantities, ordered steps, timing, servings, and calories, as if it were a \
+    well-written recipe for that exact dish.
 
     Rules:
     - Return valid JSON only, matching the provided schema exactly.
@@ -39,13 +48,27 @@ enum RecipeJSONSchema {
     and never sum multiple stated durations into a single step's timer.
     - Generate short step titles (3-6 words).
     - Extract prep time, cook time, and servings when available. Estimate servings only if missing.
+    - Estimate caloriesPerServing using standard nutritional knowledge of the ingredients, their \
+    quantities, and the serving count. Always provide a number — only return null if the recipe \
+    is fundamentally not food (this should essentially never happen).
+    - If additional optimization instructions are given after the recipe text (for example \
+    reducing calories, increasing protein, or reducing sugar), adjust ingredient quantities, \
+    substitutions, or additions to satisfy them as best you can while keeping the dish coherent \
+    and recognizable, then reflect the result — including the updated caloriesPerServing — in \
+    the output. Also set optimizationSummary to a short, qualitative 1-2 sentence note of what \
+    you changed and why (for example "Used less oil and swapped in Greek yogurt for cream to cut \
+    calories" or "Reduced the chili and used a milder spice blend to make this kid-friendly"). \
+    Describe changes in general terms rather than inventing precise before/after numbers you \
+    didn't actually compute. If no optimization instructions were given, set optimizationSummary \
+    to null.
     - Infer timerSeconds only when the recipe explicitly specifies a duration for that exact step's \
     action (for example "cook for 10 minutes"). Otherwise return null. Double-check that a \
     timerSeconds value matches the specific duration written for that step, not a neighboring step.
     - Preserve ingredient sections such as Marinade, Curry, Sauce, or Garnish. Use null if the \
     recipe has no sections.
-    - Do not invent ingredients that aren't in the source recipe, but ALWAYS give every ingredient \
-    a concrete quantity and unit — even when the source text states no amount at all (for example \
+    - If given a full recipe, do not invent ingredients that aren't in the source text. ALWAYS \
+    give every ingredient a concrete quantity and unit — even when the source text states no \
+    amount at all (for example \
     "garam masala", "black pepper powder", or "hot water" listed with no quantity). Use your \
     culinary knowledge of the dish to estimate a sensible amount scaled to the stated servings. \
     Vague phrases like "to taste", "as needed", or "a pinch" must also become a concrete quantity \
@@ -69,6 +92,8 @@ enum RecipeJSONSchema {
             "servings": ["type": "integer", "description": "Number of servings. Estimate a reasonable default if not stated."],
             "prepTimeMinutes": ["type": ["integer", "null"], "description": "Prep time in minutes, if stated or inferable."],
             "cookTimeMinutes": ["type": ["integer", "null"], "description": "Cook time in minutes, if stated or inferable."],
+            "caloriesPerServing": ["type": ["integer", "null"], "description": "Estimated calories per serving."],
+            "optimizationSummary": ["type": ["string", "null"], "description": "Short note on what was changed to satisfy requested optimizations, or null if none were requested."],
             "ingredients": [
                 "type": "array",
                 "items": [
@@ -104,7 +129,7 @@ enum RecipeJSONSchema {
                 ],
             ],
         ],
-        "required": ["title", "description", "servings", "prepTimeMinutes", "cookTimeMinutes", "ingredients", "steps"],
+        "required": ["title", "description", "servings", "prepTimeMinutes", "cookTimeMinutes", "caloriesPerServing", "optimizationSummary", "ingredients", "steps"],
         "additionalProperties": false,
     ]
 }
