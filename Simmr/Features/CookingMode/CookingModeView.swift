@@ -12,7 +12,11 @@ struct CookingModeView: View {
     @State private var converterPreset: ConverterPreset?
 
     init(session: RecipeSession, path: Binding<[AppRoute]>) {
-        _viewModel = StateObject(wrappedValue: CookingModeViewModel(steps: session.steps, ingredients: session.ingredients))
+        _viewModel = StateObject(wrappedValue: CookingModeViewModel(
+            steps: session.steps,
+            ingredients: session.ingredients,
+            recipeTitle: session.title
+        ))
         _path = path
     }
 
@@ -104,6 +108,14 @@ struct CookingModeView: View {
                 viewModel.refreshTimerIfNeeded()
             }
         }
+        .onChange(of: viewModel.didFinishExternally) { _, finishedExternally in
+            if finishedExternally {
+                path.removeAll()
+            }
+        }
+        .onDisappear {
+            viewModel.endCookingSession()
+        }
     }
 
     private var ingredientsUsedRow: some View {
@@ -190,6 +202,7 @@ struct CookingModeView: View {
 
             Button(viewModel.isLastStep ? "Finish" : "Next") {
                 if viewModel.isLastStep {
+                    viewModel.endCookingSession()
                     path.removeAll()
                 } else {
                     viewModel.goToNextStep()

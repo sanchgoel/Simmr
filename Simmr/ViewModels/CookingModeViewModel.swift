@@ -22,6 +22,10 @@ final class CookingModeViewModel: ObservableObject {
     @Published private(set) var timerRemaining: Int = 0
     @Published private(set) var isTimerRunning: Bool = false
     @Published private(set) var isTimerComplete: Bool = false
+    /// Flips to true when the Live Activity's "🍽 Finish Recipe" button ends
+    /// the session from outside the app. CookingModeView observes this to
+    /// pop back out of Cooking Mode, mirroring the in-app Finish button.
+    @Published var didFinishExternally: Bool = false
 
     private var timerTask: Task<Void, Never>?
     /// Wall-clock moment the timer should hit zero. Remaining time is always
@@ -38,15 +42,18 @@ final class CookingModeViewModel: ObservableObject {
     /// Fallback list for fuzzy matching when a step's ingredientsUsed string
     /// doesn't exactly match an ingredient name (e.g. pluralization drift).
     private let ingredients: [Ingredient]
+    private let recipeTitle: String
 
-    init(steps: [RecipeStep], ingredients: [Ingredient]) {
+    init(steps: [RecipeStep], ingredients: [Ingredient], recipeTitle: String) {
         self.steps = steps
         self.ingredients = ingredients
+        self.recipeTitle = recipeTitle
         self.ingredientsByName = Dictionary(
             ingredients.map { ($0.name.lowercased(), $0) },
             uniquingKeysWith: { first, _ in first }
         )
         resetTimer()
+        startLiveActivity()
     }
 
     var currentStep: RecipeStep { steps[currentStepIndex] }
@@ -110,10 +117,17 @@ final class CookingModeViewModel: ObservableObject {
         resetTimer()
     }
 
+    /// Called when the user finishes the recipe or leaves Cooking Mode, so
+    /// the Live Activity doesn't linger after it's no longer relevant.
+    func endCookingSession() {
+        LiveActivityManager.shared.end()
+    }
+
     func startTimer() {
         guard currentStep.hasTimer, timerRemaining > 0, !isTimerRunning else { return }
         isTimerRunning = true
         timerEndDate = Date().addingTimeInterval(TimeInterval(timerRemaining))
+        syncLiveActivity()
 
         timerTask?.cancel()
         timerTask = Task { [weak self] in
@@ -131,6 +145,7 @@ final class CookingModeViewModel: ObservableObject {
         timerTask?.cancel()
         timerTask = nil
         timerEndDate = nil
+        syncLiveActivity()
     }
 
     func resetTimer() {
@@ -138,6 +153,7 @@ final class CookingModeViewModel: ObservableObject {
         timerTotalOverride = nil
         timerRemaining = currentStep.timerSeconds ?? 0
         isTimerComplete = false
+        syncLiveActivity()
     }
 
     /// Increases the configured timer duration by one minute — works whether
@@ -151,6 +167,7 @@ final class CookingModeViewModel: ObservableObject {
         if isTimerRunning, let timerEndDate {
             self.timerEndDate = timerEndDate.addingTimeInterval(60)
         }
+        syncLiveActivity()
     }
 
     /// Decreases the configured timer duration by one minute, down to (but
@@ -159,6 +176,7 @@ final class CookingModeViewModel: ObservableObject {
         guard currentStep.hasTimer, canDecreaseTimerMinute else { return }
         timerTotalOverride = timerTotal - 60
         timerRemaining = max(0, timerRemaining - 60)
+        defer { syncLiveActivity() }
         guard isTimerRunning else { return }
         if timerRemaining == 0 {
             isTimerRunning = false
@@ -185,6 +203,10 @@ final class CookingModeViewModel: ObservableObject {
             self.timerEndDate = nil
             timerTask?.cancel()
             timerTask = nil
+            // Only the completion transition needs to push a Live Activity
+            // update — the countdown itself is rendered by the widget via
+            // Text(timerInterval:), so there's no need to update every tick.
+            syncLiveActivity()
         } else {
             timerRemaining = remaining
         }
@@ -195,5 +217,47 @@ final class CookingModeViewModel: ObservableObject {
     func refreshTimerIfNeeded() {
         guard isTimerRunning else { return }
         syncTimerToWallClock()
+    }
+
+    private func startLiveActivity() {
+        LiveActivityManager.shared.onExternalStepChange = { [weak self] newIndex in
+            self?.applyExternalStepChange(newIndex)
+        }
+        LiveActivityManager.shared.onActivityEndedExternally = { [weak self] in
+            self?.didFinishExternally = true
+        }
+        LiveActivityManager.shared.start(
+            recipeTitle: recipeTitle,
+            stepTitles: steps.map(\.title),
+            stepInstructions: steps.map(\.instruction),
+            currentStepIndex: currentStepIndex
+        )
+    }
+
+    /// Pushes the Live Activity's content in sync with the view model's own
+    /// state. Called on every step change and every timer state transition
+    /// (start/pause/resume/adjust/complete) — never on a per-second tick,
+    /// since the widget renders the live countdown itself.
+    private func syncLiveActivity() {
+        LiveActivityManager.shared.update(
+            currentStepIndex: currentStepIndex,
+            timerEndDate: isTimerRunning ? timerEndDate : nil,
+            isTimerPaused: isTimerPaused,
+            pausedRemainingSeconds: isTimerPaused ? timerRemaining : nil,
+            isTimerComplete: isTimerComplete
+        )
+    }
+
+    /// Applies a step change made from the Live Activity's Previous/Next
+    /// buttons (which run in the widget extension process and update the
+    /// Activity directly) so the in-app UI reflects it immediately.
+    private func applyExternalStepChange(_ newIndex: Int) {
+        guard newIndex != currentStepIndex, steps.indices.contains(newIndex) else { return }
+        currentStepIndex = newIndex
+        resetTimer()
+    }
+
+    private var isTimerPaused: Bool {
+        currentStep.hasTimer && !isTimerRunning && !isTimerComplete && timerRemaining > 0
     }
 }

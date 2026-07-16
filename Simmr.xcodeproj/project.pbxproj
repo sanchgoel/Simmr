@@ -6,11 +6,51 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E80326461B94AD25095DAA73 /* SimmrWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 584FAF80DDAE65D9BB4EA0D1 /* SimmrWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		11193174BBA71850A354B51A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6687DC43003AED6004D0369 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C165CEDAF8A06E412766D6D3;
+			remoteInfo = SimmrWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		04758BD4B2E3FE28E1E2D4D7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E80326461B94AD25095DAA73 /* SimmrWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		584FAF80DDAE65D9BB4EA0D1 /* SimmrWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SimmrWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACDCFFE6D765D1BBD19F6C39 /* SimmrWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SimmrWidget-Info.plist"; sourceTree = "<group>"; };
 		C6687DCC3003AED6004D0369 /* Simmr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Simmr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		222CFEA9E0AA2C1A13142D96 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		45ECEBB448FAE841BC163532 /* SimmrWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SimmrWidget;
+			sourceTree = "<group>";
+		};
 		C6687DCE3003AED6004D0369 /* Simmr */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Simmr;
@@ -26,6 +66,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CFEC7625193EC15BD96AC370 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +80,9 @@
 			isa = PBXGroup;
 			children = (
 				C6687DCE3003AED6004D0369 /* Simmr */,
+				45ECEBB448FAE841BC163532 /* SimmrWidget */,
+				222CFEA9E0AA2C1A13142D96 /* Shared */,
+				ACDCFFE6D765D1BBD19F6C39 /* SimmrWidget-Info.plist */,
 				C6687DCD3003AED6004D0369 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				C6687DCC3003AED6004D0369 /* Simmr.app */,
+				584FAF80DDAE65D9BB4EA0D1 /* SimmrWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +99,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		C165CEDAF8A06E412766D6D3 /* SimmrWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F4A9712395B424DB98F31176 /* Build configuration list for PBXNativeTarget "SimmrWidgetExtension" */;
+			buildPhases = (
+				19110F285C5B4B73565DBCA8 /* Sources */,
+				CFEC7625193EC15BD96AC370 /* Frameworks */,
+				C4F4C909E06C9D3F926D8DD7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				222CFEA9E0AA2C1A13142D96 /* Shared */,
+				45ECEBB448FAE841BC163532 /* SimmrWidget */,
+			);
+			name = SimmrWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = SimmrWidgetExtension;
+			productReference = 584FAF80DDAE65D9BB4EA0D1 /* SimmrWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		C6687DCB3003AED6004D0369 /* Simmr */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C6687DD73003AED7004D0369 /* Build configuration list for PBXNativeTarget "Simmr" */;
@@ -55,12 +129,15 @@
 				C6687DC83003AED6004D0369 /* Sources */,
 				C6687DC93003AED6004D0369 /* Frameworks */,
 				C6687DCA3003AED6004D0369 /* Resources */,
+				04758BD4B2E3FE28E1E2D4D7 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				73447E12EA37776515643831 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				222CFEA9E0AA2C1A13142D96 /* Shared */,
 				C6687DCE3003AED6004D0369 /* Simmr */,
 			);
 			name = Simmr;
@@ -80,6 +157,9 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					C165CEDAF8A06E412766D6D3 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 					C6687DCB3003AED6004D0369 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -100,11 +180,19 @@
 			projectRoot = "";
 			targets = (
 				C6687DCB3003AED6004D0369 /* Simmr */,
+				C165CEDAF8A06E412766D6D3 /* SimmrWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		C4F4C909E06C9D3F926D8DD7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6687DCA3003AED6004D0369 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +203,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		19110F285C5B4B73565DBCA8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6687DC83003AED6004D0369 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +219,71 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		73447E12EA37776515643831 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C165CEDAF8A06E412766D6D3 /* SimmrWidgetExtension */;
+			targetProxy = 11193174BBA71850A354B51A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		4300F687471EE4C61AC5DD30 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = GZZEFH2B5A;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "SimmrWidget-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.inspiredevstudio.simmr.SimmrWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		90339F36BDB271280E2AD5F2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = GZZEFH2B5A;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "SimmrWidget-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.inspiredevstudio.simmr.SimmrWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		C6687DD53003AED7004D0369 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -255,6 +414,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Simmr;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -300,6 +460,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Simmr;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -348,6 +509,15 @@
 			buildConfigurations = (
 				C6687DD83003AED7004D0369 /* Debug */,
 				C6687DD93003AED7004D0369 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F4A9712395B424DB98F31176 /* Build configuration list for PBXNativeTarget "SimmrWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4300F687471EE4C61AC5DD30 /* Debug */,
+				90339F36BDB271280E2AD5F2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
