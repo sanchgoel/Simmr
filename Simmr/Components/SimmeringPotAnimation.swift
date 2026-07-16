@@ -27,10 +27,14 @@ struct SimmeringPotAnimation: View {
         .onAppear { isBreathing = true }
     }
 
+    /// Each wisp randomizes within its own lane rather than the full width,
+    /// so positions vary puff to puff without ever overlapping.
+    private static let steamLanes: [ClosedRange<CGFloat>] = [-42...(-16), -13...13, 16...42]
+
     private var steam: some View {
-        HStack(spacing: 16) {
-            ForEach(0..<3, id: \.self) { index in
-                SteamWispView(color: Self.lightCoral, startDelay: Double(index) * 0.5)
+        ZStack {
+            ForEach(0..<Self.steamLanes.count, id: \.self) { index in
+                SteamWispView(color: Self.lightCoral, startDelay: Double(index) * 0.5, xRange: Self.steamLanes[index])
             }
         }
     }
@@ -70,24 +74,29 @@ struct SimmeringPotAnimation: View {
     }
 }
 
-/// A single steam curl that fully fades away and reappears a moment later,
-/// like a fresh puff of steam escaping — rather than one continuous stream.
+/// A single steam curl that fully fades away and reappears a moment later
+/// at a new random spot above the lid — like fresh puffs of steam escaping
+/// unevenly, rather than a fixed row of streams.
 private struct SteamWispView: View {
     let color: Color
     let startDelay: Double
+    let xRange: ClosedRange<CGFloat>
 
     @State private var riseAmount: CGFloat = 0
     @State private var opacity: Double = 0
+    @State private var xOffset: CGFloat = 0
 
     var body: some View {
         SteamWisp()
             .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
             .frame(width: 12, height: 34)
             .opacity(opacity)
-            .offset(y: -20 * riseAmount)
+            .offset(x: xOffset, y: -20 * riseAmount)
             .task {
                 try? await Task.sleep(nanoseconds: UInt64(startDelay * 1_000_000_000))
                 while !Task.isCancelled {
+                    xOffset = CGFloat.random(in: xRange)
+
                     withAnimation(.easeOut(duration: 0.3)) { opacity = 0.85 }
                     withAnimation(.easeInOut(duration: 1.1)) { riseAmount = 1 }
                     try? await Task.sleep(nanoseconds: 700_000_000)
@@ -98,7 +107,7 @@ private struct SteamWispView: View {
                     if Task.isCancelled { return }
 
                     riseAmount = 0
-                    try? await Task.sleep(nanoseconds: 400_000_000)
+                    try? await Task.sleep(nanoseconds: UInt64.random(in: 250_000_000...550_000_000))
                     if Task.isCancelled { return }
                 }
             }
