@@ -23,6 +23,10 @@ enum RecipeJSONSchema {
 
     Rules:
     - Return valid JSON only, matching the provided schema exactly.
+    - Write every output field — titles, descriptions, ingredient names, instructions, tips — in \
+    English only. If the source recipe is in another language or mixes scripts (e.g. "Onion | \
+    प्याज"), translate it to plain English and drop the non-English text entirely. Never output \
+    bilingual or dual-script text.
     - Preserve all ingredients and their cooking order.
     - Split long instructions into logical steps; each step is a single cooking action.
     - Never create two steps for the same action. Each step must be materially different from \
@@ -40,11 +44,17 @@ enum RecipeJSONSchema {
     timerSeconds value matches the specific duration written for that step, not a neighboring step.
     - Preserve ingredient sections such as Marinade, Curry, Sauce, or Garnish. Use null if the \
     recipe has no sections.
-    - Do not invent ingredients or quantities. Use null for a quantity or unit you cannot determine.
+    - Do not invent ingredients. Use null for a quantity or unit you truly cannot estimate.
+    - Never output a vague quantity such as "to taste", "as needed", or "a pinch" as the quantity \
+    or unit. Instead, estimate a specific, concrete quantity and unit appropriate for the dish and \
+    its stated servings (for example "salt to taste" becomes quantity 0.5, unit "tsp"). Only use \
+    null when there is truly no reasonable amount to infer.
     - Mark an ingredient optional only if the source text says so (e.g. "optional", "if desired").
     - Keep instructions concise while preserving important details.
-    - For each step, list the ingredient names (as they appear in the ingredients list) used in \
-    that step.
+    - For each step, list the ingredient names used in that step, and spell each one EXACTLY as it \
+    appears in the "name" field of the ingredients list — same casing, wording, and punctuation — \
+    so it can be matched back programmatically. Never paraphrase, pluralize, or shorten an \
+    ingredient name in ingredientsUsed.
     - Ignore introductions, headnotes, and unrelated text — extract only the recipe itself.
     """
 

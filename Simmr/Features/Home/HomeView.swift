@@ -32,6 +32,8 @@ struct HomeView: View {
             }
             .background(Theme.Colors.creamBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("Simmr")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -52,8 +54,6 @@ struct HomeView: View {
                     switch route {
                     case .overview:
                         RecipeOverviewView(session: session, path: $path)
-                    case .grocery:
-                        GroceryChecklistView(session: session, path: $path)
                     case .cooking:
                         CookingModeView(session: session, path: $path)
                     }

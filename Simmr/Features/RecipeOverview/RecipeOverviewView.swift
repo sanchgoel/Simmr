@@ -2,6 +2,10 @@
 //  RecipeOverviewView.swift
 //  Simmr
 //
+//  Single recipe screen: adjust servings, check off ingredients you have on
+//  hand, then start cooking. Combines what used to be a separate overview
+//  and grocery checklist screen since they showed the same ingredient list.
+//
 
 import SwiftUI
 
@@ -10,53 +14,47 @@ struct RecipeOverviewView: View {
     @Binding var path: [AppRoute]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                header
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                    header
 
-                ServingsStepper(servings: $session.servings)
-                    .padding(Theme.Spacing.md)
-                    .cardStyle()
+                    ServingsStepper(servings: $session.servings)
+                        .padding(Theme.Spacing.md)
+                        .cardStyle()
 
-                ForEach(session.ingredientSections) { section in
-                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                        Text(section.title ?? "Ingredients")
-                            .font(Theme.Typography.title3)
-                            .foregroundStyle(Theme.Colors.textDark)
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        progressLabel
+                        progressBar
+                    }
 
-                        VStack(spacing: Theme.Spacing.xs) {
-                            ForEach(section.ingredients) { ingredient in
-                                HStack(spacing: Theme.Spacing.xxs) {
-                                    Text(ingredient.name)
-                                        .font(Theme.Typography.body)
-                                        .foregroundStyle(Theme.Colors.textDark)
-                                    if ingredient.optional {
-                                        Text("optional")
-                                            .font(Theme.Typography.caption2)
-                                            .foregroundStyle(Theme.Colors.textMuted)
-                                    }
-                                    Spacer()
-                                    if let quantityLabel = ingredient.quantityLabel {
-                                        Text(quantityLabel)
-                                            .font(Theme.Typography.subheadline)
-                                            .foregroundStyle(Theme.Colors.textMuted)
-                                            .contentTransition(.numericText())
+                    ForEach(session.ingredientSections) { section in
+                        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                            Text(section.title ?? "Ingredients")
+                                .font(Theme.Typography.title3)
+                                .foregroundStyle(Theme.Colors.textDark)
+
+                            VStack(spacing: Theme.Spacing.xs) {
+                                ForEach(section.ingredients) { ingredient in
+                                    IngredientRow(ingredient: ingredient) {
+                                        session.toggleChecked(ingredient)
                                     }
                                 }
-                                .padding(Theme.Spacing.sm)
-                                .background(Theme.Colors.creamCard)
-                                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
                             }
                         }
                         .animation(.easeInOut(duration: 0.2), value: session.servings)
                     }
                 }
-
-                Button("View Grocery Checklist") {
-                    path.append(.grocery)
-                }
-                .buttonStyle(.primary)
+                .padding(Theme.Spacing.lg)
             }
+
+            Divider()
+                .overlay(Theme.Colors.border)
+
+            Button("Start Cooking") {
+                path.append(.cooking)
+            }
+            .buttonStyle(.primary)
             .padding(Theme.Spacing.lg)
         }
         .background(Theme.Colors.creamBackground.ignoresSafeArea())
@@ -89,6 +87,18 @@ struct RecipeOverviewView: View {
             .foregroundStyle(Theme.Colors.textMuted)
             .padding(.top, Theme.Spacing.xxs)
         }
+    }
+
+    private var progressLabel: some View {
+        Text("\(session.checkedCount) of \(session.totalCount) ingredients available")
+            .font(Theme.Typography.subheadline)
+            .foregroundStyle(Theme.Colors.textMuted)
+            .contentTransition(.numericText())
+            .animation(.easeInOut(duration: 0.15), value: session.checkedCount)
+    }
+
+    private var progressBar: some View {
+        StepProgressBar(progress: session.totalCount == 0 ? 0 : Double(session.checkedCount) / Double(session.totalCount))
     }
 }
 

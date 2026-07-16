@@ -17,10 +17,7 @@ struct OnboardingContainerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if viewModel.showsProgressBar {
-                header
-            }
-
+            header
             content
         }
         .background(Theme.Colors.creamBackground.ignoresSafeArea())
@@ -29,18 +26,29 @@ struct OnboardingContainerView: View {
 
     private var header: some View {
         VStack(spacing: Theme.Spacing.sm) {
-            HStack {
-                Button(action: viewModel.goBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Theme.Colors.textDark)
-                        .frame(width: 32, height: 32)
-                        .background(Theme.Colors.creamCard)
-                        .clipShape(Circle())
+            ZStack {
+                Text("Simmr")
+                    .font(Theme.Typography.headline)
+                    .foregroundStyle(Theme.Colors.textDark)
+
+                if viewModel.showsProgressBar {
+                    HStack {
+                        Button(action: viewModel.goBack) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Theme.Colors.textDark)
+                                .frame(width: 32, height: 32)
+                                .background(Theme.Colors.creamCard)
+                                .clipShape(Circle())
+                        }
+                        Spacer()
+                    }
                 }
-                Spacer()
             }
-            StepProgressBar(progress: viewModel.progress)
+
+            if viewModel.showsProgressBar {
+                StepProgressBar(progress: viewModel.progress)
+            }
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.top, Theme.Spacing.sm)

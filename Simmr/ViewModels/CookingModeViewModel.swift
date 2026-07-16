@@ -25,9 +25,13 @@ final class CookingModeViewModel: ObservableObject {
     /// Keyed by lowercased name so step ingredientsUsed strings can be matched
     /// back to the recipe's (serving-scaled) ingredients for their quantity.
     private let ingredientsByName: [String: Ingredient]
+    /// Fallback list for fuzzy matching when a step's ingredientsUsed string
+    /// doesn't exactly match an ingredient name (e.g. pluralization drift).
+    private let ingredients: [Ingredient]
 
     init(steps: [RecipeStep], ingredients: [Ingredient]) {
         self.steps = steps
+        self.ingredients = ingredients
         self.ingredientsByName = Dictionary(
             ingredients.map { ($0.name.lowercased(), $0) },
             uniquingKeysWith: { first, _ in first }
@@ -46,8 +50,23 @@ final class CookingModeViewModel: ObservableObject {
     /// ingredients so each chip can show exactly how much to add right now.
     var currentStepIngredients: [UsedIngredient] {
         currentStep.ingredientsUsed.map { name in
-            let match = ingredientsByName[name.lowercased()]
+            let match = resolveIngredient(named: name)
             return UsedIngredient(name: match?.name ?? name, quantityLabel: match?.quantityLabel)
+        }
+    }
+
+    /// Resolves a step's ingredientsUsed string back to a recipe ingredient.
+    /// Tries an exact (case-insensitive) match first, then falls back to a
+    /// substring match so minor wording drift (e.g. "onion" vs "onions")
+    /// still surfaces a quantity instead of leaving the chip blank.
+    private func resolveIngredient(named name: String) -> Ingredient? {
+        let normalized = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if let exact = ingredientsByName[normalized] {
+            return exact
+        }
+        return ingredients.first { ingredient in
+            let ingredientName = ingredient.name.lowercased()
+            return ingredientName.contains(normalized) || normalized.contains(ingredientName)
         }
     }
 
