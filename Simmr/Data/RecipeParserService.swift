@@ -8,15 +8,29 @@
 //  content) only means changing what text gets passed to generateRecipe —
 //  this service and everything downstream of it is unaffected.
 //
+//  The user message sent to the model is a JSON object — {"input": ...,
+//  "userProfile": ...} — rather than plain text, so the prompt can be
+//  personalized with the user's Kitchen Profile (see RecipeUserProfile).
+//  userProfile is null whenever onboarding hasn't been completed.
+//
 
 import Foundation
 
 struct RecipeParserService: RecipeGenerating {
     private let apiKeyStore: APIKeyStoring
+    private let kitchenProfileStore: KitchenProfileStoring
+    private let promptOverrideStore: PromptOverrideStoring
     private let model: String
 
-    init(apiKeyStore: APIKeyStoring = KeychainAPIKeyStore(), model: String = "gpt-4.1-mini") {
+    init(
+        apiKeyStore: APIKeyStoring = KeychainAPIKeyStore(),
+        kitchenProfileStore: KitchenProfileStoring = UserDefaultsKitchenProfileStore(),
+        promptOverrideStore: PromptOverrideStoring = UserDefaultsPromptOverrideStore(),
+        model: String = "gpt-4.1-mini"
+    ) {
         self.apiKeyStore = apiKeyStore
+        self.kitchenProfileStore = kitchenProfileStore
+        self.promptOverrideStore = promptOverrideStore
         self.model = model
     }
 
@@ -25,10 +39,13 @@ struct RecipeParserService: RecipeGenerating {
             throw OpenAIClientError.missingAPIKey
         }
 
+        let systemPrompt = promptOverrideStore.load() ?? RecipeJSONSchema.defaultSystemPrompt
+        let userPrompt = try Self.userPrompt(pastedText: pastedText, options: options, userProfile: currentUserProfile())
+
         let client = OpenAIClient(apiKey: apiKey, model: model)
         let data = try await client.createStructuredCompletion(
-            systemPrompt: RecipeJSONSchema.systemPrompt,
-            userPrompt: Self.userPrompt(pastedText: pastedText, options: options),
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
             schemaName: RecipeJSONSchema.schemaName,
             schema: RecipeJSONSchema.schema
         )
@@ -40,7 +57,35 @@ struct RecipeParserService: RecipeGenerating {
         }
     }
 
-    private static func userPrompt(pastedText: String, options: RecipeOptimizationOptions) -> String {
+    /// Nil when onboarding hasn't been completed, so the prompt's
+    /// "userProfile" field is sent as JSON null.
+    private func currentUserProfile() -> RecipeUserProfile? {
+        guard let profile = kitchenProfileStore.load(), profile.isComplete else { return nil }
+        return RecipeUserProfile.build(from: profile.answers)
+    }
+
+    private struct GenerationInput: Encodable {
+        let input: String
+        let userProfile: RecipeUserProfile?
+    }
+
+    private static func userPrompt(pastedText: String, options: RecipeOptimizationOptions, userProfile: RecipeUserProfile?) throws -> String {
+        var input = pastedText
+        let instructions = optimizationInstructions(for: options)
+        if !instructions.isEmpty {
+            let instructionsBlock = instructions.map { "- \($0)" }.joined(separator: "\n")
+            input += "\n\nAdditional optimization instructions for this recipe:\n\(instructionsBlock)"
+        }
+
+        let payload = GenerationInput(input: input, userProfile: userProfile)
+        let data = try JSONEncoder().encode(payload)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw OpenAIClientError.malformedCompletion
+        }
+        return json
+    }
+
+    private static func optimizationInstructions(for options: RecipeOptimizationOptions) -> [String] {
         var instructions: [String] = []
         if options.contains(.lowerCalories) {
             instructions.append("Reduce overall calories per serving where reasonable (lighter cooking methods, portion-conscious amounts, lower-calorie substitutions) without losing the dish's identity.")
@@ -63,15 +108,6 @@ struct RecipeParserService: RecipeGenerating {
         if options.contains(.kidFriendly) {
             instructions.append("Make this recipe more kid-friendly — mild flavors, less spice, familiar and approachable ingredients.")
         }
-
-        guard !instructions.isEmpty else { return pastedText }
-
-        let instructionsBlock = instructions.map { "- \($0)" }.joined(separator: "\n")
-        return """
-        \(pastedText)
-
-        Additional optimization instructions for this recipe:
-        \(instructionsBlock)
-        """
+        return instructions
     }
 }

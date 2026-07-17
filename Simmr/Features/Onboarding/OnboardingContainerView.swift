@@ -11,8 +11,11 @@ import SwiftUI
 struct OnboardingContainerView: View {
     @StateObject private var viewModel: OnboardingViewModel
 
-    init(onComplete: @escaping () -> Void) {
-        _viewModel = StateObject(wrappedValue: OnboardingViewModel(onComplete: onComplete))
+    /// `isEditing: true` (from Settings > Edit Kitchen Profile) skips the
+    /// welcome screen and shows a close button, since the user has already
+    /// completed onboarding once. `false` is first-time onboarding.
+    init(isEditing: Bool = false, onComplete: @escaping () -> Void) {
+        _viewModel = StateObject(wrappedValue: OnboardingViewModel(isEditing: isEditing, onComplete: onComplete))
     }
 
     var body: some View {
@@ -42,6 +45,20 @@ struct OnboardingContainerView: View {
                                 .clipShape(Circle())
                         }
                         Spacer()
+                    }
+                }
+
+                if viewModel.isEditing {
+                    HStack {
+                        Spacer()
+                        Button(action: viewModel.close) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Theme.Colors.textDark)
+                                .frame(width: 32, height: 32)
+                                .background(Theme.Colors.creamCard)
+                                .clipShape(Circle())
+                        }
                     }
                 }
             }

@@ -178,7 +178,7 @@ struct UnitConverterView: View {
 
     private var inputRow: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            TextField("Value", text: $inputText)
+            TextField("", text: $inputText, prompt: Text("Value").foregroundStyle(Theme.Colors.textMuted))
                 .keyboardType(.decimalPad)
                 .focused($isInputFocused)
                 .font(Theme.Typography.title2)

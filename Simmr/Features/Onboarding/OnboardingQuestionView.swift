@@ -131,8 +131,10 @@ struct OnboardingQuestionView: View {
     }
 
     private var otherTextField: some View {
-        TextField("Other (optional)", text: $otherText)
+        TextField("", text: $otherText, prompt: Text("Other (optional)").foregroundStyle(Theme.Colors.textMuted))
             .font(Theme.Typography.body)
+            .foregroundStyle(Theme.Colors.textDark)
+            .tint(Theme.Colors.coral)
             .focused($isOtherFieldFocused)
             .padding(Theme.Spacing.sm)
             .background(Theme.Colors.creamCard)

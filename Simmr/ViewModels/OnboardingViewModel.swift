@@ -15,22 +15,37 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     @Published private(set) var answers: OnboardingAnswers
-    @Published var screen: Screen = .welcome
+    @Published var screen: Screen
 
     let allQuestions: [OnboardingQuestion]
+    /// True when editing an already-completed profile from Settings, as
+    /// opposed to first-time onboarding. Skips the welcome screen, keeps
+    /// the profile marked complete while editing (so it doesn't drop back
+    /// out of RecipeParserService's personalization), and shows a close
+    /// button so the user isn't forced through the remaining questions.
+    let isEditing: Bool
     private let store: KitchenProfileStoring
     let onComplete: () -> Void
 
     init(
         allQuestions: [OnboardingQuestion] = OnboardingQuestions.all,
         store: KitchenProfileStoring? = nil,
+        isEditing: Bool = false,
         onComplete: @escaping () -> Void
     ) {
         let store = store ?? UserDefaultsKitchenProfileStore()
         self.allQuestions = allQuestions
         self.store = store
         self.answers = store.load()?.answers ?? [:]
+        self.isEditing = isEditing
         self.onComplete = onComplete
+
+        if isEditing {
+            let visible = allQuestions.filter { $0.isVisible(store.load()?.answers ?? [:]) }
+            self.screen = visible.isEmpty ? .final : .question(0)
+        } else {
+            self.screen = .welcome
+        }
     }
 
     /// Questions currently in the flow, re-filtered live as conditional answers change.
@@ -62,7 +77,11 @@ final class OnboardingViewModel: ObservableObject {
     func goBack() {
         switch screen {
         case .question(let index):
-            screen = index == 0 ? .welcome : .question(index - 1)
+            if index == 0 {
+                isEditing ? close() : (screen = .welcome)
+            } else {
+                screen = .question(index - 1)
+            }
         case .final:
             screen = .question(max(visibleQuestions.count - 1, 0))
         case .welcome:
@@ -75,6 +94,13 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func finish() {
+        onComplete()
+    }
+
+    /// Dismisses without requiring the remaining questions to be answered.
+    /// Only meaningful when `isEditing` — answers are already persisted
+    /// incrementally as they're changed.
+    func close() {
         onComplete()
     }
 
@@ -114,7 +140,10 @@ final class OnboardingViewModel: ObservableObject {
         }
 
         answers[question.id] = answer
-        persist(isComplete: false)
+        // While editing an already-completed profile, keep it marked
+        // complete so personalization keeps working mid-edit; first-time
+        // onboarding stays incomplete until completeOnboarding() runs.
+        persist(isComplete: isEditing)
     }
 
     func updateOtherText(_ text: String, for question: OnboardingQuestion) {

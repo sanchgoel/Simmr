@@ -24,8 +24,10 @@ struct APIKeySettingsView: View {
                             .foregroundStyle(Theme.Colors.textMuted)
                     }
 
-                    SecureField("sk-...", text: $viewModel.apiKeyInput)
+                    SecureField("", text: $viewModel.apiKeyInput, prompt: Text("sk-...").foregroundStyle(Theme.Colors.textMuted))
                         .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Colors.textDark)
+                        .tint(Theme.Colors.coral)
                         .focused($isFieldFocused)
                         .padding(Theme.Spacing.sm)
                         .background(Theme.Colors.creamCard)
@@ -86,6 +88,64 @@ struct APIKeySettingsView: View {
                         isShowingOnboarding = true
                     }
                     .buttonStyle(.secondary)
+
+                    Divider()
+                        .overlay(Theme.Colors.border)
+
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        HStack {
+                            Text("Recipe Prompt")
+                                .font(Theme.Typography.title3)
+                                .foregroundStyle(Theme.Colors.textDark)
+                            if viewModel.isPromptOverridden {
+                                Text("Custom")
+                                    .font(Theme.Typography.footnote.weight(.semibold))
+                                    .foregroundStyle(Theme.Colors.coral)
+                                    .padding(.horizontal, Theme.Spacing.xs)
+                                    .padding(.vertical, 2)
+                                    .background(Theme.Colors.tint)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        Text("For testing only — edit the system prompt sent to OpenAI when generating recipes.")
+                            .font(Theme.Typography.subheadline)
+                            .foregroundStyle(Theme.Colors.textMuted)
+                    }
+
+                    TextEditor(text: $viewModel.promptInput)
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundStyle(Theme.Colors.textDark)
+                        .frame(height: 260)
+                        .scrollContentBackground(.hidden)
+                        .padding(Theme.Spacing.sm)
+                        .background(Theme.Colors.creamCard)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                                .strokeBorder(Theme.Colors.border, lineWidth: Theme.Stroke.regular)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                        .onChange(of: viewModel.promptInput) { _, _ in
+                            viewModel.acknowledgePromptEdit()
+                        }
+
+                    if viewModel.didSavePrompt {
+                        Label("Prompt saved", systemImage: "checkmark.circle.fill")
+                            .font(Theme.Typography.footnote)
+                            .foregroundStyle(Theme.Colors.amber)
+                    }
+
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Button("Save Prompt") {
+                            viewModel.savePrompt()
+                        }
+                        .buttonStyle(.primary)
+
+                        Button("Reset to Default", role: .destructive) {
+                            viewModel.resetPromptToDefault()
+                        }
+                        .buttonStyle(.secondary)
+                        .disabled(!viewModel.isPromptOverridden)
+                    }
                 }
                 .padding(Theme.Spacing.lg)
             }
@@ -98,7 +158,7 @@ struct APIKeySettingsView: View {
                 }
             }
             .fullScreenCover(isPresented: $isShowingOnboarding) {
-                OnboardingContainerView {
+                OnboardingContainerView(isEditing: true) {
                     isShowingOnboarding = false
                 }
             }

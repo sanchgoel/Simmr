@@ -23,11 +23,15 @@ struct Recipe: Codable, Identifiable, Hashable {
     /// optimization toggles (e.g. "Used less oil and swapped in Greek
     /// yogurt to cut calories"). Nil when no optimizations were requested.
     var optimizationSummary: String?
+    var difficulty: String? = nil
+    var cuisine: String? = nil
+    var mealType: [String] = []
+    var dietaryTags: [String] = []
     var ingredients: [Ingredient]
     var steps: [RecipeStep]
 
     private enum CodingKeys: String, CodingKey {
-        case title, description, servings, prepTimeMinutes, cookTimeMinutes, caloriesPerServing, optimizationSummary, ingredients, steps
+        case title, description, servings, prepTimeMinutes, cookTimeMinutes, caloriesPerServing, optimizationSummary, difficulty, cuisine, mealType, dietaryTags, ingredients, steps
     }
 }
 
@@ -39,10 +43,12 @@ struct Ingredient: Codable, Identifiable, Hashable {
     /// Ingredient group such as "Marinade", "Curry", "Garnish". Nil if the recipe isn't sectioned.
     var section: String? = nil
     var optional: Bool = false
+    /// Short prep note such as "finely minced" or "diced". Nil if the ingredient needs no prep.
+    var prep: String? = nil
     var checked: Bool = false
 
     private enum CodingKeys: String, CodingKey {
-        case name, quantity, unit, section, optional
+        case name, quantity, unit, section, optional, prep
     }
 
     /// Quantity and unit combined for display (e.g. "1½ cup"), or nil if neither is known.
@@ -65,9 +71,14 @@ struct RecipeStep: Codable, Identifiable, Hashable {
     var ingredientsUsed: [String] = []
     var timerSeconds: Int? = nil
     var tips: String? = nil
+    var cookware: String? = nil
+    var heatLevel: String? = nil
+    /// "on" or "off", when a lid is relevant to this step. Nil otherwise.
+    var lid: String? = nil
+    var visualCue: String? = nil
 
     private enum CodingKeys: String, CodingKey {
-        case stepNumber, title, instruction, ingredientsUsed, timerSeconds, tips
+        case stepNumber, title, instruction, ingredientsUsed, timerSeconds, tips, cookware, heatLevel, lid, visualCue
     }
 
     var hasTimer: Bool { timerSeconds != nil }

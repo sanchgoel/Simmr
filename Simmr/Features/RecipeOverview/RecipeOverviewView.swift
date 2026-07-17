@@ -78,22 +78,35 @@ struct RecipeOverviewView: View {
                     .foregroundStyle(Theme.Colors.textMuted)
             }
 
-            FlowLayout(spacing: Theme.Spacing.sm) {
-                Label("\(session.baseServings) servings", systemImage: "person.2")
+            FlowLayout(spacing: Theme.Spacing.xs) {
+                metaPill(icon: "person.2", text: "\(session.baseServings) servings")
                 if let prepTime = session.prepTimeMinutes {
-                    Label("\(prepTime) min prep", systemImage: "timer")
+                    metaPill(icon: "timer", text: "\(prepTime) min prep")
                 }
                 if let cookTime = session.cookTimeMinutes {
-                    Label("\(cookTime) min cook", systemImage: "flame")
+                    metaPill(icon: "flame", text: "\(cookTime) min cook")
                 }
                 if let calories = session.caloriesPerServing {
-                    Label("\(calories) kcal", systemImage: "bolt.fill")
+                    metaPill(icon: "bolt.fill", text: "\(calories) kcal")
                 }
             }
-            .font(Theme.Typography.caption)
-            .foregroundStyle(Theme.Colors.textMuted)
-            .padding(.top, Theme.Spacing.xxs)
+            .padding(.top, Theme.Spacing.xs)
         }
+    }
+
+    private func metaPill(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.Colors.coral)
+            Text(text)
+                .font(Theme.Typography.caption.weight(.medium))
+                .foregroundStyle(Theme.Colors.textDark)
+        }
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 6)
+        .background(Theme.Colors.tint)
+        .clipShape(Capsule())
     }
 
     private func optimizationCallout(_ summary: String) -> some View {
