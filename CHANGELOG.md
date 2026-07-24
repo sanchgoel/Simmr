@@ -14,6 +14,9 @@ Before archiving a new TestFlight build:
 
 ## [Unreleased]
 
+## 1.0 (5) — 2026-07-24
+
+- Added Recipe Import: capture recipe pages with the camera (multi-page document scanner, reorder/retake/add pages before processing) or pick multiple existing photos, then reconstruct the recipe via on-device Vision OCR + the existing AI parser — lands on the same Recipe Overview screen as pasting text. The parsing prompt was updated to handle noisy OCR input: duplicate/repeated text, watermarks, headers/footers/page numbers, out-of-order pages, and OCR misreads are cleaned up or ignored rather than trusted at face value. If some pages can't be read, the import continues with the readable ones instead of failing outright.
 - Optimization chips on the Home screen now read as tappable (tint background, border, `+`/checkmark icon, press feedback), and the section title changed from "Optimize this recipe" to "Select what to optimize."
 - Tapping anywhere outside the recipe input field now dismisses the keyboard.
 - App now forces light appearance everywhere (`preferredColorScheme(.light)`), fixing the status bar and a few text fields that were unreadable when the system was in Dark Mode (the app is light-mode-only by design).
