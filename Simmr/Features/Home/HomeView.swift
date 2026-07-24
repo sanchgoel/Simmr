@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var path: [AppRoute] = []
     @State private var session: RecipeSession?
     @State private var isShowingSettings = false
+    @State private var isShowingImportFlow = false
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
@@ -17,6 +18,8 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     header
+                    importRecipeButton
+                    orDivider
                     pasteField
                     optimizationToggles
                     if !viewModel.hasAPIKey {
@@ -32,6 +35,10 @@ struct HomeView: View {
                 .padding(Theme.Spacing.lg)
             }
             .background(Theme.Colors.creamBackground.ignoresSafeArea())
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isTextFieldFocused = false
+            }
             .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -47,6 +54,19 @@ struct HomeView: View {
                 viewModel.refreshAPIKeyStatus()
             }) {
                 APIKeySettingsView()
+            }
+            .fullScreenCover(isPresented: $isShowingImportFlow) {
+                RecipeImportFlowView(
+                    optimizationOptions: viewModel.optimizationOptions,
+                    onRecipeReady: { recipe in
+                        session = RecipeSession(recipe: recipe)
+                        isShowingImportFlow = false
+                        path.append(.overview)
+                    },
+                    onCancelAll: {
+                        isShowingImportFlow = false
+                    }
+                )
             }
             .navigationDestination(for: AppRoute.self) { route in
                 if let session {
@@ -80,6 +100,30 @@ struct HomeView: View {
         .padding(.top, Theme.Spacing.md)
     }
 
+    private var importRecipeButton: some View {
+        Button {
+            isTextFieldFocused = false
+            isShowingImportFlow = true
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "camera.fill")
+                Text("Import Recipe")
+            }
+        }
+        .buttonStyle(.secondary)
+    }
+
+    private var orDivider: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Rectangle().fill(Theme.Colors.border).frame(height: Theme.Stroke.regular)
+            Text("or paste a recipe below")
+                .font(Theme.Typography.footnote)
+                .foregroundStyle(Theme.Colors.textMuted)
+                .fixedSize()
+            Rectangle().fill(Theme.Colors.border).frame(height: Theme.Stroke.regular)
+        }
+    }
+
     private var pasteField: some View {
         ZStack(alignment: .topLeading) {
             if viewModel.pastedText.isEmpty {
@@ -109,7 +153,7 @@ struct HomeView: View {
 
     private var optimizationToggles: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text("Optimize this recipe")
+            Text("Select what to optimize")
                 .font(Theme.Typography.headline)
                 .foregroundStyle(Theme.Colors.textDark)
 
@@ -130,18 +174,22 @@ struct HomeView: View {
         return Button {
             viewModel.toggleOptimization(option)
         } label: {
-            Text(title)
-                .font(Theme.Typography.footnote.weight(.semibold))
-                .foregroundStyle(isSelected ? .white : Theme.Colors.textDark)
-                .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.vertical, Theme.Spacing.xs)
-                .background(isSelected ? Theme.Colors.coral : Theme.Colors.creamCard)
-                .overlay(
-                    Capsule().strokeBorder(isSelected ? Color.clear : Theme.Colors.border, lineWidth: Theme.Stroke.regular)
-                )
-                .clipShape(Capsule())
+            HStack(spacing: 4) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "plus.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(title)
+                    .font(Theme.Typography.footnote.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? .white : Theme.Colors.coral)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.xs)
+            .background(isSelected ? Theme.Colors.coral : Theme.Colors.tint)
+            .overlay(
+                Capsule().strokeBorder(isSelected ? Color.clear : Theme.Colors.coral.opacity(0.35), lineWidth: Theme.Stroke.regular)
+            )
+            .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ChipButtonStyle())
         .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 
@@ -187,6 +235,15 @@ struct HomeView: View {
         .buttonStyle(.primary)
         .disabled(!viewModel.canGenerate)
         .opacity(viewModel.canGenerate ? 1 : 0.6)
+    }
+}
+
+/// Scales down slightly on press so the optimization chips read as tappable.
+private struct ChipButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

@@ -149,6 +149,35 @@ enum RecipeJSONSchema {
     needs one, otherwise null.
     - Use null for unknown quantities or units.
 
+    Handling OCR / Scanned Input
+
+    "input" may be raw text extracted via OCR from one or more photographed or scanned pages, \
+    joined with page markers like "--- Page 2 ---". Treat OCR text as noisy and reconstruct the \
+    recipe rather than relying on its formatting:
+    - Remove duplicate or repeated text (the same ingredient, step, or sentence scanned twice, or \
+    the same page photographed more than once).
+    - Merge duplicate ingredients that refer to the same item, even if OCR produced slightly \
+    different wording, spacing, or obvious misreads (e.g. "1 cup flour" appearing on two pages \
+    merges into a single ingredient line).
+    - Ignore content that isn't part of the recipe itself: watermarks, app/website chrome, page \
+    numbers, headers, footers, timestamps, usernames, ads, unrelated notes, or navigation text.
+    - Correct obvious OCR mistakes only when you're confident of the intended word from context \
+    (e.g. "1 tbsp o1l" -> "1 tbsp oil", "preheat oven to 35O°F" -> "350°F"). Never guess at unclear \
+    text you can't confidently resolve — omit it rather than invent a plausible-sounding value.
+    - Page order reflects the order the user photographed pages in, but it may be wrong (pages can \
+    be out of sequence, or ingredients and steps split unpredictably across pages). Use cooking \
+    logic — not page order — to reconstruct the correct sequence of ingredients and steps.
+    - If step numbering is missing, inconsistent, or interrupted by page breaks, infer the correct \
+    logical numbering from cooking order rather than copying broken numbering from the source.
+    - When the same instruction or ingredient appears with conflicting details across pages (e.g. \
+    two different oven temperatures), prefer the more specific/complete version and discard the \
+    redundant duplicate rather than including both.
+    - Preserve the original cooking intent and technique; only clean up wording, spelling, and \
+    structure for readability — never change what the recipe actually asks the cook to do.
+    - If large portions of the input are illegible or unrelated noise, extract whatever complete, \
+    coherent recipe information remains and never fabricate ingredients, quantities, or steps that \
+    aren't supported by the text.
+
     If generating a recipe from a dish name, cooking request, or ingredient list:
     - prefer authentic techniques
     - use commonly available ingredients

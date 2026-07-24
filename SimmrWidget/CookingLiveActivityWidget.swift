@@ -49,14 +49,15 @@ struct CookingLiveActivityWidget: Widget {
                 }
             } compactLeading: {
                 Text("🍳")
+                    .font(.system(size: 15))
             } compactTrailing: {
-                TimerBadge(state: context.state, font: .caption.monospacedDigit(), compact: true)
+                TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
             } minimal: {
-                HStack(spacing: 2) {
-                    Text("🍳")
-                    TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
-                }
-                .font(.caption2)
+                // The minimal presentation only appears when another Live
+                // Activity is competing for space, and Apple's own
+                // convention is a single glyph there — the timer is the
+                // more useful of the two at that size, so it's shown alone.
+                TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
             }
         }
     }
@@ -77,7 +78,13 @@ private struct TimerBadge: View {
             if state.isTimerComplete {
                 Text("✅")
             } else if let endDate = state.timerEndDate {
-                Text(timerInterval: Self.safeRange(to: endDate), countsDown: true)
+                // showsHours: false caps this to a fixed "MM:SS" footprint.
+                // Text(timerInterval:) otherwise reserves layout width for
+                // the widest format it could ever need mid-countdown
+                // (including an hours digit for longer timers), which blew
+                // up the whole Dynamic Island pill once its width cap was
+                // removed to fix the earlier cropping bug.
+                Text(timerInterval: Self.safeRange(to: endDate), countsDown: true, showsHours: false)
             } else if let remaining = state.pausedRemainingSeconds {
                 Text(Self.formattedTime(remaining))
             } else {
@@ -86,7 +93,8 @@ private struct TimerBadge: View {
         }
         .font(font)
         .foregroundStyle(WidgetTheme.coral)
-        .frame(width: compact ? 46 : 64)
+        .lineLimit(1)
+        .padding(.horizontal, compact ? 2 : 6)
         .animation(.easeInOut(duration: 0.25), value: state.currentStepIndex)
         .animation(.easeInOut(duration: 0.25), value: state.isTimerComplete)
     }
