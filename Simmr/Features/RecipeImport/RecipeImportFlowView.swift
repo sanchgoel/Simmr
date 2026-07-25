@@ -15,25 +15,45 @@
 import PhotosUI
 import SwiftUI
 
+enum RecipeImportSource {
+    case camera
+    case photos
+}
+
 struct RecipeImportFlowView: View {
     let optimizationOptions: RecipeOptimizationOptions
+    /// When provided, skips this view's own source-picker sheet and jumps
+    /// straight to that source — used when the source was already chosen by
+    /// a caller's own sheet (see HomeView's "New Recipe" options).
+    var initialSource: RecipeImportSource? = nil
     var onRecipeReady: (Recipe) -> Void
     var onCancelAll: () -> Void
 
     @StateObject private var importViewModel = RecipeImportViewModel()
 
-    @State private var isShowingSourceSheet = true
+    @State private var isShowingSourceSheet: Bool
     @State private var isShowingCamera = false
     @State private var isShowingPhotosPicker = false
     @State private var isShowingReview = false
     @State private var pages: [CapturedPage] = []
-    @State private var source: ImportSource?
+    @State private var source: RecipeImportSource?
     @State private var retakePageID: CapturedPage.ID?
     @State private var photosSelection: [PhotosPickerItem] = []
 
-    private enum ImportSource {
-        case camera
-        case photos
+    init(
+        optimizationOptions: RecipeOptimizationOptions,
+        initialSource: RecipeImportSource? = nil,
+        onRecipeReady: @escaping (Recipe) -> Void,
+        onCancelAll: @escaping () -> Void
+    ) {
+        self.optimizationOptions = optimizationOptions
+        self.initialSource = initialSource
+        self.onRecipeReady = onRecipeReady
+        self.onCancelAll = onCancelAll
+        _isShowingSourceSheet = State(initialValue: initialSource == nil)
+        _isShowingCamera = State(initialValue: initialSource == .camera)
+        _isShowingPhotosPicker = State(initialValue: initialSource == .photos)
+        _source = State(initialValue: initialSource)
     }
 
     private static let importMessages = [
@@ -72,6 +92,17 @@ struct RecipeImportFlowView: View {
         .onChange(of: photosSelection) { _, newValue in
             guard !newValue.isEmpty else { return }
             Task { await handlePhotosSelection(newValue) }
+        }
+        .onChange(of: isShowingPhotosPicker) { _, isShowing in
+            // PHPickerViewController has no explicit "cancelled" callback,
+            // only this presentation binding — if it just closed with
+            // nothing picked and we don't already have pages from an
+            // earlier round (i.e. this isn't an "Add More" dismissal),
+            // there's nothing left to show, so back out entirely instead of
+            // leaving the user stranded on a blank screen.
+            if !isShowing && photosSelection.isEmpty && pages.isEmpty {
+                onCancelAll()
+            }
         }
         .overlay {
             if importViewModel.isProcessing {

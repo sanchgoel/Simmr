@@ -16,7 +16,19 @@ final class CookingModeViewModel: ObservableObject {
         let unit: String?
     }
 
+    /// Tracks whether this cook has already reached Finish, so a
+    /// Finish -> pop -> onDisappear sequence can't downgrade a completed
+    /// session back to paused regardless of call ordering.
+    private enum SessionLifecycle {
+        case cooking
+        case completed
+    }
+
+    let recipe: Recipe
     let steps: [RecipeStep]
+    let servings: Int
+    let sessionID: UUID
+    let startedAt: Date
 
     @Published private(set) var currentStepIndex: Int = 0
     @Published private(set) var timerRemaining: Int = 0
@@ -27,6 +39,8 @@ final class CookingModeViewModel: ObservableObject {
     /// pop back out of Cooking Mode, mirroring the in-app Finish button.
     @Published var didFinishExternally: Bool = false
 
+    private var completedStepIndices: Set<Int>
+    private var sessionState: SessionLifecycle = .cooking
     private var timerTask: Task<Void, Never>?
     /// Wall-clock moment the timer should hit zero. Remaining time is always
     /// recomputed from this rather than decremented tick-by-tick, so the
@@ -43,17 +57,72 @@ final class CookingModeViewModel: ObservableObject {
     /// doesn't exactly match an ingredient name (e.g. pluralization drift).
     private let ingredients: [Ingredient]
     private let recipeTitle: String
+    private let cookingSessionRepository: CookingSessionRepository
 
-    init(steps: [RecipeStep], ingredients: [Ingredient], recipeTitle: String) {
-        self.steps = steps
+    /// `existingCookingSession` nil means "start cooking fresh" (mints a new
+    /// sessionID/startedAt, timer starts idle at the first step's stated
+    /// duration). Non-nil means "resume" — reuses the persisted id/timestamps
+    /// and restores step/timer state exactly, including resuming a timer
+    /// that was still running when the app was last alive.
+    init(
+        recipe: Recipe,
+        ingredients: [Ingredient],
+        servings: Int,
+        existingCookingSession: CookingSession? = nil,
+        cookingSessionRepository: CookingSessionRepository? = nil
+    ) {
+        self.recipe = recipe
+        self.steps = recipe.steps
+        self.recipeTitle = recipe.title
         self.ingredients = ingredients
-        self.recipeTitle = recipeTitle
+        self.servings = servings
         self.ingredientsByName = Dictionary(
             ingredients.map { ($0.name.lowercased(), $0) },
             uniquingKeysWith: { first, _ in first }
         )
-        resetTimer()
+        self.cookingSessionRepository = cookingSessionRepository ?? LocalCookingSessionRepository()
+
+        if let existingCookingSession {
+            sessionID = existingCookingSession.id
+            startedAt = existingCookingSession.startedAt
+            completedStepIndices = existingCookingSession.completedStepIndices
+            currentStepIndex = max(0, min(existingCookingSession.currentStepIndex, max(recipe.steps.count - 1, 0)))
+            timerTotalOverride = existingCookingSession.timerTotalOverride
+
+            if existingCookingSession.isTimerRunning, let restoredEndDate = existingCookingSession.timerEndDate {
+                let remaining = Int(ceil(restoredEndDate.timeIntervalSinceNow))
+                if remaining > 0 {
+                    timerEndDate = restoredEndDate
+                    timerRemaining = remaining
+                    isTimerRunning = true
+                    isTimerComplete = false
+                } else {
+                    timerEndDate = nil
+                    timerRemaining = 0
+                    isTimerRunning = false
+                    isTimerComplete = true
+                }
+            } else {
+                timerEndDate = nil
+                timerRemaining = existingCookingSession.timerRemainingSeconds
+                isTimerRunning = false
+                isTimerComplete = existingCookingSession.isTimerComplete
+            }
+        } else {
+            sessionID = UUID()
+            startedAt = Date()
+            completedStepIndices = []
+            currentStepIndex = 0
+        }
+
+        if existingCookingSession == nil {
+            resetTimer()
+        } else if isTimerRunning {
+            resumeTicking()
+        }
+
         startLiveActivity()
+        persistSnapshot(status: .active)
     }
 
     var currentStep: RecipeStep { steps[currentStepIndex] }
@@ -107,19 +176,40 @@ final class CookingModeViewModel: ObservableObject {
 
     func goToNextStep() {
         guard !isLastStep else { return }
+        completedStepIndices.insert(currentStepIndex)
         currentStepIndex += 1
         resetTimer()
+        persistSnapshot(status: .active)
     }
 
     func goToPreviousStep() {
         guard !isFirstStep else { return }
         currentStepIndex -= 1
         resetTimer()
+        persistSnapshot(status: .active)
     }
 
-    /// Called when the user finishes the recipe or leaves Cooking Mode, so
-    /// the Live Activity doesn't linger after it's no longer relevant.
+    /// Marks the cook as finished — called from the in-app Finish button.
+    /// Guarded by sessionState so it's a no-op if somehow called twice.
+    func finishCooking() {
+        guard sessionState == .cooking else { return }
+        completedStepIndices.insert(currentStepIndex)
+        sessionState = .completed
+        persistSnapshot(status: .completed)
+        LiveActivityManager.shared.end()
+    }
+
+    /// Called when the user leaves Cooking Mode via any pop — back-swipe, or
+    /// after finishCooking() already ran and popped the nav stack. If the
+    /// session never reached `.completed`, this means the user backed out
+    /// without finishing, so it's persisted `.paused` (still resumable, but
+    /// won't force-navigate on the next launch). The sessionState guard is
+    /// what makes a Finish -> pop -> onDisappear sequence safe regardless of
+    /// ordering — it won't downgrade an already-completed session.
     func endCookingSession() {
+        if sessionState == .cooking {
+            persistSnapshot(status: .paused)
+        }
         LiveActivityManager.shared.end()
     }
 
@@ -128,16 +218,8 @@ final class CookingModeViewModel: ObservableObject {
         isTimerRunning = true
         timerEndDate = Date().addingTimeInterval(TimeInterval(timerRemaining))
         syncLiveActivity()
-
-        timerTask?.cancel()
-        timerTask = Task { [weak self] in
-            while let self, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                if Task.isCancelled { return }
-                self.syncTimerToWallClock()
-                if self.timerRemaining <= 0 { return }
-            }
-        }
+        resumeTicking()
+        persistSnapshot(status: .active)
     }
 
     func pauseTimer() {
@@ -146,6 +228,7 @@ final class CookingModeViewModel: ObservableObject {
         timerTask = nil
         timerEndDate = nil
         syncLiveActivity()
+        persistSnapshot(status: .active)
     }
 
     func resetTimer() {
@@ -154,6 +237,7 @@ final class CookingModeViewModel: ObservableObject {
         timerRemaining = currentStep.timerSeconds ?? 0
         isTimerComplete = false
         syncLiveActivity()
+        persistSnapshot(status: .active)
     }
 
     /// Increases the configured timer duration by one minute — works whether
@@ -168,6 +252,7 @@ final class CookingModeViewModel: ObservableObject {
             self.timerEndDate = timerEndDate.addingTimeInterval(60)
         }
         syncLiveActivity()
+        persistSnapshot(status: .active)
     }
 
     /// Decreases the configured timer duration by one minute, down to (but
@@ -176,7 +261,10 @@ final class CookingModeViewModel: ObservableObject {
         guard currentStep.hasTimer, canDecreaseTimerMinute else { return }
         timerTotalOverride = timerTotal - 60
         timerRemaining = max(0, timerRemaining - 60)
-        defer { syncLiveActivity() }
+        defer {
+            syncLiveActivity()
+            persistSnapshot(status: .active)
+        }
         guard isTimerRunning else { return }
         if timerRemaining == 0 {
             isTimerRunning = false
@@ -207,6 +295,7 @@ final class CookingModeViewModel: ObservableObject {
             // update — the countdown itself is rendered by the widget via
             // Text(timerInterval:), so there's no need to update every tick.
             syncLiveActivity()
+            persistSnapshot(status: .active)
         } else {
             timerRemaining = remaining
         }
@@ -219,18 +308,40 @@ final class CookingModeViewModel: ObservableObject {
         syncTimerToWallClock()
     }
 
+    /// The 1-second polling loop that keeps `timerRemaining` accurate while
+    /// a timer runs. Shared by startTimer() (fresh start) and init's resume
+    /// path (a restored session whose timer was still running) — the loop
+    /// itself doesn't care which one kicked it off, only that timerEndDate
+    /// is already set.
+    private func resumeTicking() {
+        timerTask?.cancel()
+        timerTask = Task { [weak self] in
+            while let self, !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                self.syncTimerToWallClock()
+                if self.timerRemaining <= 0 { return }
+            }
+        }
+    }
+
     private func startLiveActivity() {
         LiveActivityManager.shared.onExternalStepChange = { [weak self] newIndex in
             self?.applyExternalStepChange(newIndex)
         }
         LiveActivityManager.shared.onActivityEndedExternally = { [weak self] in
-            self?.didFinishExternally = true
+            self?.applyExternalFinish()
         }
         LiveActivityManager.shared.start(
+            sessionID: sessionID,
             recipeTitle: recipeTitle,
             stepTitles: steps.map(\.title),
             stepInstructions: steps.map(\.instruction),
-            currentStepIndex: currentStepIndex
+            currentStepIndex: currentStepIndex,
+            timerEndDate: isTimerRunning ? timerEndDate : nil,
+            isTimerPaused: isTimerPaused,
+            pausedRemainingSeconds: isTimerPaused ? timerRemaining : nil,
+            isTimerComplete: isTimerComplete
         )
     }
 
@@ -255,9 +366,45 @@ final class CookingModeViewModel: ObservableObject {
         guard newIndex != currentStepIndex, steps.indices.contains(newIndex) else { return }
         currentStepIndex = newIndex
         resetTimer()
+        persistSnapshot(status: .active)
+    }
+
+    /// Mirrors finishCooking() for the case where the Live Activity's own
+    /// "🍽 Finish Recipe" button ended the session from outside the app —
+    /// the Activity has already ended itself, so this only needs to update
+    /// our own state and the persisted session, not call
+    /// LiveActivityManager.shared.end() again.
+    private func applyExternalFinish() {
+        guard sessionState == .cooking else { return }
+        completedStepIndices.insert(currentStepIndex)
+        sessionState = .completed
+        persistSnapshot(status: .completed)
+        didFinishExternally = true
     }
 
     private var isTimerPaused: Bool {
         currentStep.hasTimer && !isTimerRunning && !isTimerComplete && timerRemaining > 0
+    }
+
+    private func persistSnapshot(status: CookingSessionStatus) {
+        let session = CookingSession(
+            id: sessionID,
+            recipe: recipe,
+            currentStepIndex: currentStepIndex,
+            completedStepIndices: completedStepIndices,
+            servings: servings,
+            timerEndDate: isTimerRunning ? timerEndDate : nil,
+            timerRemainingSeconds: timerRemaining,
+            isTimerRunning: isTimerRunning,
+            isTimerComplete: isTimerComplete,
+            timerTotalOverride: timerTotalOverride,
+            startedAt: startedAt,
+            updatedAt: Date(),
+            status: status
+        )
+        let repository = cookingSessionRepository
+        Task {
+            try? await repository.save(session)
+        }
     }
 }

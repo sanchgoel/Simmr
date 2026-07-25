@@ -17,6 +17,9 @@
 
 import ActivityKit
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.inspiredevstudio.simmr", category: "CookingSessionManager")
 
 @MainActor
 enum CookingSessionManager {
@@ -24,10 +27,19 @@ enum CookingSessionManager {
     /// clamped to the step range, and clears any in-flight timer — mirroring
     /// what `CookingModeViewModel.resetTimer()` does for in-app navigation.
     static func advanceStep(by delta: Int) async {
-        guard let activity = Activity<CookingActivityAttributes>.activities.first else { return }
+        let all = Activity<CookingActivityAttributes>.activities
+        logger.log("advanceStep(by: \(delta)) — activities.count = \(all.count)")
+        guard let activity = all.first else {
+            logger.log("advanceStep: no activities found, bailing out")
+            return
+        }
         var state = activity.content.state
         let newIndex = min(max(state.currentStepIndex + delta, 0), max(state.stepTitles.count - 1, 0))
-        guard newIndex != state.currentStepIndex else { return }
+        logger.log("advanceStep: currentStepIndex=\(state.currentStepIndex) -> newIndex=\(newIndex), activityID=\(activity.id, privacy: .public)")
+        guard newIndex != state.currentStepIndex else {
+            logger.log("advanceStep: newIndex == currentStepIndex, no-op")
+            return
+        }
 
         state.currentStepIndex = newIndex
         state.timerEndDate = nil
@@ -36,6 +48,7 @@ enum CookingSessionManager {
         state.isTimerComplete = false
 
         await activity.update(ActivityContent(state: state, staleDate: nil))
+        logger.log("advanceStep: update() call completed")
     }
 
     /// Ends the running Activity — invoked by the "🍽 Finish Recipe" button

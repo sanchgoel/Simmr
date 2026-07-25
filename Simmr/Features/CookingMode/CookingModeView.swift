@@ -11,11 +11,12 @@ struct CookingModeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var converterPreset: ConverterPreset?
 
-    init(session: RecipeSession, path: Binding<[AppRoute]>) {
+    init(session: RecipeSession, path: Binding<[AppRoute]>, existingCookingSession: CookingSession? = nil) {
         _viewModel = StateObject(wrappedValue: CookingModeViewModel(
-            steps: session.steps,
+            recipe: session.recipe,
             ingredients: session.ingredients,
-            recipeTitle: session.title
+            servings: session.servings,
+            existingCookingSession: existingCookingSession
         ))
         _path = path
     }
@@ -202,7 +203,7 @@ struct CookingModeView: View {
 
             Button(viewModel.isLastStep ? "Finish" : "Next") {
                 if viewModel.isLastStep {
-                    viewModel.endCookingSession()
+                    viewModel.finishCooking()
                     path.removeAll()
                 } else {
                     viewModel.goToNextStep()

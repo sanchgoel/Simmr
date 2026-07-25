@@ -47,6 +47,12 @@ struct CookingActivityAttributes: ActivityAttributes {
     }
 
     var recipeTitle: String
+    /// Stable identifier for the persisted CookingSession this Activity
+    /// belongs to. Fixed at Activity creation (Attributes, unlike
+    /// ContentState, can't change over the Activity's lifetime) — lets a
+    /// relaunched app find and re-adopt a still-running Activity instead of
+    /// creating a duplicate. See LiveActivityManager.
+    var sessionID: UUID
 }
 
 extension Array {

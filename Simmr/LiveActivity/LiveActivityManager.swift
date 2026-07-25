@@ -25,6 +25,20 @@
 import ActivityKit
 import Foundation
 
+/// Plain, non-ActivityKit snapshot of a running Activity's current content —
+/// keeps ActivityKit itself contained to this one file, matching the header
+/// comment above. Used by CookingSessionRestorer to reconcile a persisted
+/// CookingSession against whatever a still-alive Live Activity says (which
+/// may be ahead, if the user tapped Next/Previous/Finish on the Live
+/// Activity while the app itself was killed).
+struct LiveActivityRestoredState {
+    let currentStepIndex: Int
+    let timerEndDate: Date?
+    let isTimerPaused: Bool
+    let pausedRemainingSeconds: Int?
+    let isTimerComplete: Bool
+}
+
 @MainActor
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
@@ -45,28 +59,52 @@ final class LiveActivityManager {
 
     private init() {}
 
+    /// Starts a Live Activity for `sessionID`, or re-adopts one that's
+    /// already running (e.g. the app was force-quit mid-cook and just
+    /// relaunched) rather than creating a duplicate — Activity.activities is
+    /// kept in sync by ActivityKit independent of the app process, the same
+    /// idiom Shared/CookingSessionManager.swift already relies on from the
+    /// widget extension side. The timer-state parameters default to "no
+    /// timer running," matching a fresh cook; a resumed cook passes its
+    /// restored state so the Activity reflects it immediately.
     func start(
+        sessionID: UUID,
         recipeTitle: String,
         stepTitles: [String],
         stepInstructions: [String],
-        currentStepIndex: Int
+        currentStepIndex: Int,
+        timerEndDate: Date? = nil,
+        isTimerPaused: Bool = false,
+        pausedRemainingSeconds: Int? = nil,
+        isTimerComplete: Bool = false
     ) {
         guard activity == nil else { return }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         self.stepTitles = stepTitles
         self.stepInstructions = stepInstructions
 
-        let attributes = CookingActivityAttributes(recipeTitle: recipeTitle)
         let state = CookingActivityAttributes.ContentState(
             stepTitles: stepTitles,
             stepInstructions: stepInstructions,
             currentStepIndex: currentStepIndex,
-            timerEndDate: nil,
-            isTimerPaused: false,
-            pausedRemainingSeconds: nil,
-            isTimerComplete: false
+            timerEndDate: timerEndDate,
+            isTimerPaused: isTimerPaused,
+            pausedRemainingSeconds: pausedRemainingSeconds,
+            isTimerComplete: isTimerComplete
         )
+
+        if let existing = Activity<CookingActivityAttributes>.activities.first(where: { $0.attributes.sessionID == sessionID }) {
+            activity = existing
+            observeExternalChanges(on: existing)
+            Task {
+                await existing.update(ActivityContent(state: state, staleDate: nil))
+            }
+            return
+        }
+
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        let attributes = CookingActivityAttributes(recipeTitle: recipeTitle, sessionID: sessionID)
 
         do {
             let activity = try Activity.request(
@@ -78,6 +116,23 @@ final class LiveActivityManager {
         } catch {
             activity = nil
         }
+    }
+
+    /// Reads a still-running Activity's current content without starting or
+    /// adopting it into `self.activity` — used only by CookingSessionRestorer
+    /// at launch, before any CookingModeViewModel exists to own it.
+    func liveState(for sessionID: UUID) -> LiveActivityRestoredState? {
+        guard let match = Activity<CookingActivityAttributes>.activities.first(where: { $0.attributes.sessionID == sessionID }) else {
+            return nil
+        }
+        let state = match.content.state
+        return LiveActivityRestoredState(
+            currentStepIndex: state.currentStepIndex,
+            timerEndDate: state.timerEndDate,
+            isTimerPaused: state.isTimerPaused,
+            pausedRemainingSeconds: state.pausedRemainingSeconds,
+            isTimerComplete: state.isTimerComplete
+        )
     }
 
     func update(

@@ -11,6 +11,12 @@ import SwiftUI
 struct RootView: View {
     @State private var isOnboardingComplete: Bool
     @State private var isLaunchAnimationComplete = false
+    /// Whether an in-progress cook should be restored straight into Cooking
+    /// Mode instead of Home. Resolved by a `.task` below that runs
+    /// concurrently with the launch animation, so it's ready well before
+    /// `content` ever appears — LaunchAnimationView's ~1.4s fixed sequence
+    /// comfortably outlasts a local UserDefaults read.
+    @State private var restoredState = RestoredLaunchState.none
 
     init() {
         _isOnboardingComplete = State(initialValue: UserDefaultsKitchenProfileStore().load()?.isComplete ?? false)
@@ -30,12 +36,20 @@ struct RootView: View {
                 .transition(.opacity)
             }
         }
+        .task {
+            guard isOnboardingComplete else { return }
+            restoredState = await CookingSessionRestorer.restore()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         if isOnboardingComplete {
-            HomeView()
+            HomeView(
+                initialSession: restoredState.recipeSession,
+                initialPath: restoredState.path,
+                initialCookingSession: restoredState.cookingSession
+            )
         } else {
             OnboardingContainerView {
                 isOnboardingComplete = true
