@@ -44,6 +44,16 @@ struct RootView: View {
             }
         }
         .task {
+            // A signed-in account (Firebase Auth restores its session from
+            // the Keychain on its own, independent of local storage) with
+            // nothing in local storage — a fresh install, or a reinstall —
+            // otherwise looks like starting over even though everything is
+            // sitting in Firestore. Runs before the onboarding/Home decision
+            // below, so a restored Kitchen Profile is picked up immediately.
+            if authManager.currentUser != nil {
+                await FirestoreSyncManager.shared.restoreFromFirestoreIfNeeded()
+                isOnboardingComplete = UserDefaultsKitchenProfileStore().load()?.isComplete ?? false
+            }
             guard isOnboardingComplete else { return }
             restoredState = await CookingSessionRestorer.restore()
         }

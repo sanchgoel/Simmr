@@ -21,6 +21,13 @@ final class HomeViewModel: ObservableObject {
     /// All sessions (active, paused, and completed), most recent first,
     /// capped for display — drives the "Recent Recipes" section.
     @Published private(set) var recentSessions: [CookingSession] = []
+    /// False only for the brief window before the very first
+    /// `refreshSessions()` resolves — lets HomeView hold off choosing between
+    /// its first-time and returning-user layouts until it actually knows
+    /// which one is correct, instead of flashing first-time (the two
+    /// `@Published` arrays' default empty state) for a frame before the
+    /// real data lands.
+    @Published private(set) var hasLoadedSessions = false
 
     /// Whether the user has ever generated/cooked anything — decides
     /// between the first-time layout (all four creation options shown up
@@ -51,9 +58,28 @@ final class HomeViewModel: ObservableObject {
     /// since finishing or backing out of a cook should immediately move it
     /// between the two sections.
     func refreshSessions() async {
-        guard let sessions = try? await cookingSessionRepository.fetchAllSessions() else { return }
+        let startedAt = Date()
+        var sessions: [CookingSession] = []
+        var fetchError: String?
+        do {
+            sessions = try await cookingSessionRepository.fetchAllSessions()
+        } catch {
+            fetchError = "\(error)"
+        }
+        APIDebugLogStore.shared.log(APICallLog(
+            timestamp: startedAt,
+            endpoint: "Home refreshSessions",
+            model: nil,
+            requestBody: nil,
+            statusCode: nil,
+            responseBody: "found \(sessions.count) session(s): \(sessions.map { $0.id.uuidString }.joined(separator: ", "))",
+            error: fetchError,
+            duration: Date().timeIntervalSince(startedAt)
+        ))
+        guard fetchError == nil else { return }
         resumableSession = sessions.first { $0.status == .active || $0.status == .paused }
         recentSessions = Array(sessions.prefix(10))
+        hasLoadedSessions = true
     }
 
     /// Persists a freshly generated/imported recipe immediately, before the

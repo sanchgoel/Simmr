@@ -14,6 +14,16 @@ Before archiving a new TestFlight build:
 
 ## [Unreleased]
 
+## 1.0 (7) — 2026-07-26
+
+- Added Sign in with Apple and Sign in with Google (via Firebase Auth), shown once after onboarding — skippable, since the app still works fully signed out. Settings gained an Account section to sign in/out later.
+- Signing in now backs up and restores your data via Firestore: onboarding answers (Kitchen Profile), recipes, and cooking session progress sync up automatically as you use the app, and restore back down on a fresh install or a fresh sign-in on any device — so reinstalling or switching devices no longer starts you over.
+- Added a Skip button to onboarding's question screens, for anyone who wants to start cooking before answering everything — skipped questions are simply left unanswered, and recipe personalization degrades gracefully instead of breaking.
+- Fixed: reopening "Paste Recipe" or "Type Dish Name" after using it once showed whatever was typed the last time instead of a clean input.
+- Fixed: signing in with Google was crashing the app (a missing GoogleSignIn configuration step).
+- Fixed: signing in on a fresh install could land on Home with your existing recipes missing, even though they were already backed up — the restore was racing the screen transition and losing. Sign-in now shows a brief loading state until your data is fully back in place, with no flash of the "no recipes yet" layout on the way in.
+- App Store Connect no longer asks the manual export-compliance question after each TestFlight upload (Simmr only makes standard HTTPS calls).
+
 ## 1.0 (6) — 2026-07-26
 
 - Cooking sessions now persist: force-quitting mid-cook and relaunching (via the app icon or the Live Activity) lands you back at the exact step and timer state instead of losing progress. Home gained a "Continue Cooking" card and a "Recent Recipes" history list covering active, paused, not-started, and completed cooks.

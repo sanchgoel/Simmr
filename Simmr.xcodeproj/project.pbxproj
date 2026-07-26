@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C6A496F13016003A00358A90 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C6A496F03016003A00358A90 /* FirebaseAuth */; };
+		35B316D7202BC9D64662C391 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 935ABDE718E943654BDD2A78 /* FirebaseFirestore */; };
 		C6A496F33016006A00358A90 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C6A496F23016006A00358A90 /* FirebaseCore */; };
 		C6A496F5301600A000358A90 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = C6A496F4301600A000358A90 /* GoogleSignIn */; };
 		C6A496F7301600BD00358A90 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = C6A496F6301600BD00358A90 /* GoogleSignInSwift */; };
@@ -68,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C6A496F13016003A00358A90 /* FirebaseAuth in Frameworks */,
+				35B316D7202BC9D64662C391 /* FirebaseFirestore in Frameworks */,
 				C6A496F7301600BD00358A90 /* GoogleSignInSwift in Frameworks */,
 				C6A496F33016006A00358A90 /* FirebaseCore in Frameworks */,
 				C6A496F5301600A000358A90 /* GoogleSignIn in Frameworks */,
@@ -159,6 +161,7 @@
 			name = Simmr;
 			packageProductDependencies = (
 				C6A496F03016003A00358A90 /* FirebaseAuth */,
+				935ABDE718E943654BDD2A78 /* FirebaseFirestore */,
 				C6A496F23016006A00358A90 /* FirebaseCore */,
 				C6A496F4301600A000358A90 /* GoogleSignIn */,
 				C6A496F6301600BD00358A90 /* GoogleSignInSwift */,
@@ -256,7 +259,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = GZZEFH2B5A;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "SimmrWidget-Info.plist";
@@ -284,7 +287,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = GZZEFH2B5A;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "SimmrWidget-Info.plist";
@@ -431,7 +434,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Simmr/Simmr.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = GZZEFH2B5A;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -479,7 +482,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Simmr/Simmr.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = GZZEFH2B5A;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -576,6 +579,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FE9BCC2BD5507CF7E579DEE7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		935ABDE718E943654BDD2A78 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FE9BCC2BD5507CF7E579DEE7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
 		};
 		C6A496F23016006A00358A90 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;

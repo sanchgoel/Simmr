@@ -32,7 +32,9 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if viewModel.hasAnyHistory {
+                if !viewModel.hasLoadedSessions {
+                    Theme.Colors.creamBackground.ignoresSafeArea()
+                } else if viewModel.hasAnyHistory {
                     returningUserContent
                 } else {
                     firstTimeContent

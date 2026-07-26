@@ -57,14 +57,16 @@ final class LocalCookingSessionRepository: CookingSessionRepository {
         }
         all = capInactiveSessions(all)
 
-        guard let data = try? JSONEncoder().encode(all) else { return }
+        let data = try JSONEncoder().encode(all)
         defaults.set(data, forKey: key)
+        await FirestoreSyncManager.shared.syncCookingSession(session)
     }
 
     func delete(id: UUID) async throws {
         let all = loadAll().filter { $0.id != id }
         guard let data = try? JSONEncoder().encode(all) else { return }
         defaults.set(data, forKey: key)
+        await FirestoreSyncManager.shared.deleteCookingSession(id: id)
     }
 
     /// Decodes element-by-element with per-element try? rather than one

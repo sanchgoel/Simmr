@@ -27,6 +27,7 @@ final class UserDefaultsKitchenProfileStore: KitchenProfileStoring {
     func save(_ profile: KitchenProfile) {
         guard let data = try? JSONEncoder().encode(profile) else { return }
         defaults.set(data, forKey: key)
+        Task { await FirestoreSyncManager.shared.syncKitchenProfile(profile) }
     }
 
     func clear() {

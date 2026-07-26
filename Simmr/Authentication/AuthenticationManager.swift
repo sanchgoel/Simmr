@@ -48,6 +48,16 @@ final class AuthenticationManager: NSObject, ObservableObject {
         if let clientID = FirebaseApp.app()?.options.clientID {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         }
+
+        // Firebase Auth restores a signed-in session from the Keychain on
+        // its own, without going through signInWithApple()/signInWithGoogle()
+        // — so a launch that's already signed in needs its own sync kick,
+        // otherwise anything saved locally since the last real sign-in call
+        // (or the user doc itself, on a device that's never run
+        // performInitialSync before) never reaches Firestore.
+        if currentUser != nil {
+            Task { await FirestoreSyncManager.shared.performInitialSync() }
+        }
     }
 
     enum AuthError: LocalizedError {
@@ -91,6 +101,7 @@ final class AuthenticationManager: NSObject, ObservableObject {
 
         let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
         let authResult = try await Auth.auth().signIn(with: credential)
+        await FirestoreSyncManager.shared.handleSignIn(user: authResult.user)
         currentUser = authResult.user
     }
 
@@ -123,6 +134,7 @@ final class AuthenticationManager: NSObject, ObservableObject {
 
         let firebaseCredential = OAuthProvider.credential(providerID: .apple, idToken: identityToken, rawNonce: nonce)
         let authResult = try await Auth.auth().signIn(with: firebaseCredential)
+        await FirestoreSyncManager.shared.handleSignIn(user: authResult.user)
         currentUser = authResult.user
     }
 }

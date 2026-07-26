@@ -72,6 +72,18 @@ struct LoginView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Theme.Colors.creamBackground)
         .disabled(isSigningIn)
+        .overlay {
+            if isSigningIn {
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                ProgressView()
+                    .tint(Theme.Colors.textDark)
+                    .scaleEffect(1.3)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isSigningIn)
     }
 
     private func providerButton(
