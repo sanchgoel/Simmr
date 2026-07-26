@@ -31,9 +31,16 @@ final class CookingModeViewModel: ObservableObject {
     let startedAt: Date
 
     @Published private(set) var currentStepIndex: Int = 0
-    @Published private(set) var timerRemaining: Int = 0
-    @Published private(set) var isTimerRunning: Bool = false
-    @Published private(set) var isTimerComplete: Bool = false
+    /// Which step "owns" the one active cooking timer — nil if no timer has
+    /// been started (or it was explicitly reset) since this session began.
+    /// Navigating to a different step never touches this: the active timer
+    /// keeps counting on its own step while whichever step is currently on
+    /// screen shows its own idle default, so stepping away and back always
+    /// restores the exact state instead of resetting it.
+    @Published private(set) var activeTimerStepIndex: Int?
+    @Published private(set) var activeTimerRemaining: Int = 0
+    @Published private(set) var isActiveTimerRunning: Bool = false
+    @Published private(set) var isActiveTimerComplete: Bool = false
     /// Flips to true when the Live Activity's "🍽 Finish Recipe" button ends
     /// the session from outside the app. CookingModeView observes this to
     /// pop back out of Cooking Mode, mirroring the in-app Finish button.
@@ -89,24 +96,33 @@ final class CookingModeViewModel: ObservableObject {
             currentStepIndex = max(0, min(existingCookingSession.currentStepIndex, max(recipe.steps.count - 1, 0)))
             timerTotalOverride = existingCookingSession.timerTotalOverride
 
+            // Older persisted sessions (saved before activeTimerStepIndex
+            // existed) don't carry it — fall back to inferring ownership
+            // from whether the timer fields look touched at all.
+            let restoredFloor = recipe.steps[currentStepIndex].timerSeconds ?? 0
+            let wasTouched = existingCookingSession.isTimerRunning
+                || existingCookingSession.isTimerComplete
+                || existingCookingSession.timerRemainingSeconds != restoredFloor
+            activeTimerStepIndex = existingCookingSession.activeTimerStepIndex ?? (wasTouched ? currentStepIndex : nil)
+
             if existingCookingSession.isTimerRunning, let restoredEndDate = existingCookingSession.timerEndDate {
                 let remaining = Int(ceil(restoredEndDate.timeIntervalSinceNow))
                 if remaining > 0 {
                     timerEndDate = restoredEndDate
-                    timerRemaining = remaining
-                    isTimerRunning = true
-                    isTimerComplete = false
+                    activeTimerRemaining = remaining
+                    isActiveTimerRunning = true
+                    isActiveTimerComplete = false
                 } else {
                     timerEndDate = nil
-                    timerRemaining = 0
-                    isTimerRunning = false
-                    isTimerComplete = true
+                    activeTimerRemaining = 0
+                    isActiveTimerRunning = false
+                    isActiveTimerComplete = true
                 }
             } else {
                 timerEndDate = nil
-                timerRemaining = existingCookingSession.timerRemainingSeconds
-                isTimerRunning = false
-                isTimerComplete = existingCookingSession.isTimerComplete
+                activeTimerRemaining = existingCookingSession.timerRemainingSeconds
+                isActiveTimerRunning = false
+                isActiveTimerComplete = existingCookingSession.isTimerComplete
             }
         } else {
             sessionID = UUID()
@@ -117,7 +133,7 @@ final class CookingModeViewModel: ObservableObject {
 
         if existingCookingSession == nil {
             resetTimer()
-        } else if isTimerRunning {
+        } else if isActiveTimerRunning {
             resumeTicking()
         }
 
@@ -161,31 +177,44 @@ final class CookingModeViewModel: ObservableObject {
         }
     }
 
-    var timerTotal: Int { timerTotalOverride ?? timerFloor }
+    /// True only when the step currently on screen is the one that owns the
+    /// active timer — the sole condition under which the real, ticking
+    /// timer state should be displayed. Any other step shows its own
+    /// untouched idle default instead, without disturbing the active timer
+    /// counting down elsewhere.
+    private var isActiveStepDisplayed: Bool { activeTimerStepIndex == currentStepIndex }
+
+    var timerRemaining: Int { isActiveStepDisplayed ? activeTimerRemaining : (currentStep.timerSeconds ?? 0) }
+    var isTimerRunning: Bool { isActiveStepDisplayed && isActiveTimerRunning }
+    var isTimerComplete: Bool { isActiveStepDisplayed && isActiveTimerComplete }
+
+    var timerTotal: Int { isActiveStepDisplayed ? (timerTotalOverride ?? timerFloor) : timerFloor }
     var timerProgress: Double {
         guard timerTotal > 0 else { return 0 }
         return 1 - (Double(timerRemaining) / Double(timerTotal))
     }
 
-    /// The recipe's originally stated duration for this step — the floor the
-    /// minute stepper can never go below.
+    /// The recipe's stated duration for this step — the idle/reset default,
+    /// but not a floor on how low the stepper can go (see
+    /// `timerMinimumSeconds`, which lets any step be dialed down to 1
+    /// minute regardless of its suggested duration).
     private var timerFloor: Int { currentStep.timerSeconds ?? 0 }
-    var timerTotalMinutes: Int { Int((Double(timerTotal) / 60).rounded()) }
-    var timerFloorMinutes: Int { Int((Double(timerFloor) / 60).rounded()) }
-    var canDecreaseTimerMinute: Bool { timerTotal > timerFloor }
+    /// Absolute lower bound for the minute stepper.
+    private let timerMinimumSeconds = 60
+    var canDecreaseTimerMinute: Bool { timerTotal > timerMinimumSeconds }
 
     func goToNextStep() {
         guard !isLastStep else { return }
         completedStepIndices.insert(currentStepIndex)
         currentStepIndex += 1
-        resetTimer()
+        syncLiveActivity()
         persistSnapshot(status: .active)
     }
 
     func goToPreviousStep() {
         guard !isFirstStep else { return }
         currentStepIndex -= 1
-        resetTimer()
+        syncLiveActivity()
         persistSnapshot(status: .active)
     }
 
@@ -213,17 +242,31 @@ final class CookingModeViewModel: ObservableObject {
         LiveActivityManager.shared.end()
     }
 
+    /// If a different, not-yet-claimed step is on screen, this claims it as
+    /// the one active timer, seeded fresh from its own stated duration —
+    /// shared by startTimer() and incrementTimerMinute(), the two ways a
+    /// step can go from "someone else's turn" to "this is now the active
+    /// timer."
+    private func claimActiveTimerIfNeeded() {
+        guard !isActiveStepDisplayed else { return }
+        activeTimerStepIndex = currentStepIndex
+        timerTotalOverride = nil
+        activeTimerRemaining = currentStep.timerSeconds ?? 0
+        isActiveTimerComplete = false
+    }
+
     func startTimer() {
         guard currentStep.hasTimer, timerRemaining > 0, !isTimerRunning else { return }
-        isTimerRunning = true
-        timerEndDate = Date().addingTimeInterval(TimeInterval(timerRemaining))
+        claimActiveTimerIfNeeded()
+        isActiveTimerRunning = true
+        timerEndDate = Date().addingTimeInterval(TimeInterval(activeTimerRemaining))
         syncLiveActivity()
         resumeTicking()
         persistSnapshot(status: .active)
     }
 
     func pauseTimer() {
-        isTimerRunning = false
+        isActiveTimerRunning = false
         timerTask?.cancel()
         timerTask = nil
         timerEndDate = nil
@@ -231,11 +274,16 @@ final class CookingModeViewModel: ObservableObject {
         persistSnapshot(status: .active)
     }
 
+    /// Relinquishes ownership of the active timer entirely (not just for
+    /// whichever step happens to be displayed) — the only mutator that
+    /// clears `activeTimerStepIndex`, since every other one only makes
+    /// sense once a step already owns the timer.
     func resetTimer() {
         pauseTimer()
+        activeTimerStepIndex = nil
         timerTotalOverride = nil
-        timerRemaining = currentStep.timerSeconds ?? 0
-        isTimerComplete = false
+        activeTimerRemaining = currentStep.timerSeconds ?? 0
+        isActiveTimerComplete = false
         syncLiveActivity()
         persistSnapshot(status: .active)
     }
@@ -245,10 +293,11 @@ final class CookingModeViewModel: ObservableObject {
     /// add more.
     func incrementTimerMinute() {
         guard currentStep.hasTimer else { return }
+        claimActiveTimerIfNeeded()
         timerTotalOverride = timerTotal + 60
-        timerRemaining += 60
-        isTimerComplete = false
-        if isTimerRunning, let timerEndDate {
+        activeTimerRemaining += 60
+        isActiveTimerComplete = false
+        if isActiveTimerRunning, let timerEndDate {
             self.timerEndDate = timerEndDate.addingTimeInterval(60)
         }
         syncLiveActivity()
@@ -256,38 +305,32 @@ final class CookingModeViewModel: ObservableObject {
     }
 
     /// Decreases the configured timer duration by one minute, down to (but
-    /// never below) the recipe's originally stated duration for this step.
+    /// never below) 1 minute — works whether idle, running, or paused, and
+    /// claims the step first if it hasn't been touched yet, exactly like
+    /// incrementTimerMinute().
     func decrementTimerMinute() {
         guard currentStep.hasTimer, canDecreaseTimerMinute else { return }
-        timerTotalOverride = timerTotal - 60
-        timerRemaining = max(0, timerRemaining - 60)
-        defer {
-            syncLiveActivity()
-            persistSnapshot(status: .active)
-        }
-        guard isTimerRunning else { return }
-        if timerRemaining == 0 {
-            isTimerRunning = false
-            isTimerComplete = true
-            timerEndDate = nil
-            timerTask?.cancel()
-            timerTask = nil
-        } else if let timerEndDate {
+        claimActiveTimerIfNeeded()
+        timerTotalOverride = max(timerMinimumSeconds, timerTotal - 60)
+        activeTimerRemaining = max(timerMinimumSeconds, activeTimerRemaining - 60)
+        if isActiveTimerRunning, let timerEndDate {
             self.timerEndDate = timerEndDate.addingTimeInterval(-60)
         }
+        syncLiveActivity()
+        persistSnapshot(status: .active)
     }
 
-    /// Recomputes timerRemaining from the wall-clock end date instead of
-    /// trusting the tick count, so time spent backgrounded (where this
+    /// Recomputes activeTimerRemaining from the wall-clock end date instead
+    /// of trusting the tick count, so time spent backgrounded (where this
     /// task's sleep doesn't run) is still accounted for the moment the app
     /// resumes.
     private func syncTimerToWallClock() {
         guard let timerEndDate else { return }
         let remaining = Int(ceil(timerEndDate.timeIntervalSinceNow))
         if remaining <= 0 {
-            timerRemaining = 0
-            isTimerRunning = false
-            isTimerComplete = true
+            activeTimerRemaining = 0
+            isActiveTimerRunning = false
+            isActiveTimerComplete = true
             self.timerEndDate = nil
             timerTask?.cancel()
             timerTask = nil
@@ -297,22 +340,22 @@ final class CookingModeViewModel: ObservableObject {
             syncLiveActivity()
             persistSnapshot(status: .active)
         } else {
-            timerRemaining = remaining
+            activeTimerRemaining = remaining
         }
     }
 
     /// Called when the app returns to the foreground so the displayed time
     /// is correct immediately, without waiting for the next 1-second tick.
     func refreshTimerIfNeeded() {
-        guard isTimerRunning else { return }
+        guard isActiveTimerRunning else { return }
         syncTimerToWallClock()
     }
 
-    /// The 1-second polling loop that keeps `timerRemaining` accurate while
-    /// a timer runs. Shared by startTimer() (fresh start) and init's resume
-    /// path (a restored session whose timer was still running) — the loop
-    /// itself doesn't care which one kicked it off, only that timerEndDate
-    /// is already set.
+    /// The 1-second polling loop that keeps `activeTimerRemaining` accurate
+    /// while a timer runs. Shared by startTimer() (fresh start) and init's
+    /// resume path (a restored session whose timer was still running) — the
+    /// loop itself doesn't care which one kicked it off, only that
+    /// timerEndDate is already set.
     private func resumeTicking() {
         timerTask?.cancel()
         timerTask = Task { [weak self] in
@@ -320,7 +363,7 @@ final class CookingModeViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { return }
                 self.syncTimerToWallClock()
-                if self.timerRemaining <= 0 { return }
+                if self.activeTimerRemaining <= 0 { return }
             }
         }
     }
@@ -338,10 +381,10 @@ final class CookingModeViewModel: ObservableObject {
             stepTitles: steps.map(\.title),
             stepInstructions: steps.map(\.instruction),
             currentStepIndex: currentStepIndex,
-            timerEndDate: isTimerRunning ? timerEndDate : nil,
-            isTimerPaused: isTimerPaused,
-            pausedRemainingSeconds: isTimerPaused ? timerRemaining : nil,
-            isTimerComplete: isTimerComplete
+            timerEndDate: isActiveTimerRunning ? timerEndDate : nil,
+            isTimerPaused: isActiveTimerPaused,
+            pausedRemainingSeconds: isActiveTimerPaused ? activeTimerRemaining : nil,
+            isTimerComplete: isActiveTimerComplete
         )
     }
 
@@ -352,20 +395,22 @@ final class CookingModeViewModel: ObservableObject {
     private func syncLiveActivity() {
         LiveActivityManager.shared.update(
             currentStepIndex: currentStepIndex,
-            timerEndDate: isTimerRunning ? timerEndDate : nil,
-            isTimerPaused: isTimerPaused,
-            pausedRemainingSeconds: isTimerPaused ? timerRemaining : nil,
-            isTimerComplete: isTimerComplete
+            timerEndDate: isActiveTimerRunning ? timerEndDate : nil,
+            isTimerPaused: isActiveTimerPaused,
+            pausedRemainingSeconds: isActiveTimerPaused ? activeTimerRemaining : nil,
+            isTimerComplete: isActiveTimerComplete
         )
     }
 
     /// Applies a step change made from the Live Activity's Previous/Next
     /// buttons (which run in the widget extension process and update the
-    /// Activity directly) so the in-app UI reflects it immediately.
+    /// Activity directly) so the in-app UI reflects it immediately. Doesn't
+    /// touch the active timer — same "navigating steps never resets it" rule
+    /// as goToNextStep()/goToPreviousStep().
     private func applyExternalStepChange(_ newIndex: Int) {
         guard newIndex != currentStepIndex, steps.indices.contains(newIndex) else { return }
         currentStepIndex = newIndex
-        resetTimer()
+        syncLiveActivity()
         persistSnapshot(status: .active)
     }
 
@@ -382,8 +427,8 @@ final class CookingModeViewModel: ObservableObject {
         didFinishExternally = true
     }
 
-    private var isTimerPaused: Bool {
-        currentStep.hasTimer && !isTimerRunning && !isTimerComplete && timerRemaining > 0
+    private var isActiveTimerPaused: Bool {
+        activeTimerStepIndex != nil && !isActiveTimerRunning && !isActiveTimerComplete && activeTimerRemaining > 0
     }
 
     private func persistSnapshot(status: CookingSessionStatus) {
@@ -393,11 +438,12 @@ final class CookingModeViewModel: ObservableObject {
             currentStepIndex: currentStepIndex,
             completedStepIndices: completedStepIndices,
             servings: servings,
-            timerEndDate: isTimerRunning ? timerEndDate : nil,
-            timerRemainingSeconds: timerRemaining,
-            isTimerRunning: isTimerRunning,
-            isTimerComplete: isTimerComplete,
+            timerEndDate: isActiveTimerRunning ? timerEndDate : nil,
+            timerRemainingSeconds: activeTimerRemaining,
+            isTimerRunning: isActiveTimerRunning,
+            isTimerComplete: isActiveTimerComplete,
             timerTotalOverride: timerTotalOverride,
+            activeTimerStepIndex: activeTimerStepIndex,
             startedAt: startedAt,
             updatedAt: Date(),
             status: status

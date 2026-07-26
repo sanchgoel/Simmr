@@ -23,9 +23,11 @@ private let logger = Logger(subsystem: "com.inspiredevstudio.simmr", category: "
 
 @MainActor
 enum CookingSessionManager {
-    /// Moves the running Activity's current step by `delta` (+1/-1),
-    /// clamped to the step range, and clears any in-flight timer — mirroring
-    /// what `CookingModeViewModel.resetTimer()` does for in-app navigation.
+    /// Moves the running Activity's current step by `delta` (+1/-1), clamped
+    /// to the step range. Deliberately leaves any in-flight timer alone —
+    /// navigating steps (in-app or via these Live Activity buttons) never
+    /// pauses or resets the one active cooking timer, mirroring
+    /// `CookingModeViewModel.goToNextStep()`/`goToPreviousStep()`.
     static func advanceStep(by delta: Int) async {
         let all = Activity<CookingActivityAttributes>.activities
         logger.log("advanceStep(by: \(delta)) — activities.count = \(all.count)")
@@ -42,10 +44,6 @@ enum CookingSessionManager {
         }
 
         state.currentStepIndex = newIndex
-        state.timerEndDate = nil
-        state.isTimerPaused = false
-        state.pausedRemainingSeconds = nil
-        state.isTimerComplete = false
 
         await activity.update(ActivityContent(state: state, staleDate: nil))
         logger.log("advanceStep: update() call completed")

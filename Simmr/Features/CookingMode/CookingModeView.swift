@@ -56,23 +56,19 @@ struct CookingModeView: View {
                     }
 
                     if viewModel.currentStep.hasTimer {
-                        HStack {
-                            Spacer()
-                            TimerControl(
-                                remaining: viewModel.timerRemaining,
-                                progress: viewModel.timerProgress,
-                                isRunning: viewModel.isTimerRunning,
-                                isComplete: viewModel.isTimerComplete,
-                                totalMinutes: viewModel.timerTotalMinutes,
-                                canDecreaseMinute: viewModel.canDecreaseTimerMinute,
-                                onStart: viewModel.startTimer,
-                                onPause: viewModel.pauseTimer,
-                                onReset: viewModel.resetTimer,
-                                onIncrementMinute: viewModel.incrementTimerMinute,
-                                onDecrementMinute: viewModel.decrementTimerMinute
-                            )
-                            Spacer()
-                        }
+                        TimerControl(
+                            remaining: viewModel.timerRemaining,
+                            progress: viewModel.timerProgress,
+                            isRunning: viewModel.isTimerRunning,
+                            isComplete: viewModel.isTimerComplete,
+                            canDecreaseMinute: viewModel.canDecreaseTimerMinute,
+                            onStart: viewModel.startTimer,
+                            onPause: viewModel.pauseTimer,
+                            onReset: viewModel.resetTimer,
+                            onIncrementMinute: viewModel.incrementTimerMinute,
+                            onDecrementMinute: viewModel.decrementTimerMinute,
+                            onContinue: advanceOrFinish
+                        )
                         .padding(.top, Theme.Spacing.sm)
                     }
                 }
@@ -201,15 +197,20 @@ struct CookingModeView: View {
             .disabled(viewModel.isFirstStep)
             .opacity(viewModel.isFirstStep ? 0.5 : 1)
 
-            Button(viewModel.isLastStep ? "Finish" : "Next") {
-                if viewModel.isLastStep {
-                    viewModel.finishCooking()
-                    path.removeAll()
-                } else {
-                    viewModel.goToNextStep()
-                }
-            }
-            .buttonStyle(.primary)
+            Button(viewModel.isLastStep ? "Finish" : "Next", action: advanceOrFinish)
+                .buttonStyle(.primary)
+        }
+    }
+
+    /// Advances to the next step, or finishes the recipe on the last step —
+    /// shared by the bottom nav buttons and the timer's own "Continue
+    /// Cooking" completion button so both paths stay identical.
+    private func advanceOrFinish() {
+        if viewModel.isLastStep {
+            viewModel.finishCooking()
+            path.removeAll()
+        } else {
+            viewModel.goToNextStep()
         }
     }
 }

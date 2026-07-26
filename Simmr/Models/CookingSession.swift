@@ -22,6 +22,13 @@ struct CookingSession: Codable, Identifiable, Hashable {
     var isTimerRunning: Bool
     var isTimerComplete: Bool
     var timerTotalOverride: Int?
+    /// Which step owns the persisted timer fields above — nil if no timer
+    /// has been started (or it was explicitly reset). Lets a relaunch
+    /// restore the timer to its own step even if `currentStepIndex` has
+    /// since moved elsewhere, matching CookingModeViewModel's in-memory
+    /// behavior of never resetting a timer just because the user browsed
+    /// to a different step.
+    var activeTimerStepIndex: Int?
     var startedAt: Date
     var updatedAt: Date
     var status: CookingSessionStatus
@@ -43,6 +50,7 @@ struct CookingSession: Codable, Identifiable, Hashable {
         copy.isTimerRunning = false
         copy.isTimerComplete = false
         copy.timerTotalOverride = nil
+        copy.activeTimerStepIndex = nil
         let now = Date()
         copy.startedAt = now
         copy.updatedAt = now
