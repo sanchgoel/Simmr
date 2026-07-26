@@ -11,6 +11,10 @@ import SwiftUI
 
 struct RecipeOverviewView: View {
     @ObservedObject var session: RecipeSession
+    /// Staged by whoever pushed this screen (Home) so "Start Cooking" can
+    /// forward it straight onto `.cooking` without reading back through any
+    /// sibling state — see `AppRoute` for why routes carry their own data.
+    let pendingCookingSession: CookingSession?
     @Binding var path: [AppRoute]
 
     var body: some View {
@@ -56,7 +60,7 @@ struct RecipeOverviewView: View {
                 .overlay(Theme.Colors.border)
 
             Button("Start Cooking") {
-                path.append(.cooking)
+                path.append(.cooking(session, pendingCookingSession))
             }
             .buttonStyle(.primary)
             .padding(Theme.Spacing.lg)
@@ -137,6 +141,6 @@ struct RecipeOverviewView: View {
 
 #Preview {
     NavigationStack {
-        RecipeOverviewView(session: RecipeSession(recipe: .preview), path: .constant([]))
+        RecipeOverviewView(session: RecipeSession(recipe: .preview), pendingCookingSession: nil, path: .constant([]))
     }
 }

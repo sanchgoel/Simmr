@@ -12,11 +12,11 @@
 import Foundation
 
 struct RestoredLaunchState {
-    let recipeSession: RecipeSession?
-    let cookingSession: CookingSession?
+    /// Already carries whatever RecipeSession/CookingSession the restored
+    /// destination needs — see `AppRoute`.
     let path: [AppRoute]
 
-    static let none = RestoredLaunchState(recipeSession: nil, cookingSession: nil, path: [])
+    static let none = RestoredLaunchState(path: [])
 }
 
 @MainActor
@@ -46,7 +46,7 @@ enum CookingSessionRestorer {
 
             let recipeSession = RecipeSession(recipe: session.recipe)
             recipeSession.servings = session.servings
-            return RestoredLaunchState(recipeSession: recipeSession, cookingSession: session, path: [.cooking])
+            return RestoredLaunchState(path: [.cooking(recipeSession, session)])
         } else {
             // No live Activity for a persisted .active session — it expired
             // naturally, or Finish was tapped on it while the app was dead

@@ -14,6 +14,15 @@ Before archiving a new TestFlight build:
 
 ## [Unreleased]
 
+## 1.0 (6) — 2026-07-26
+
+- Cooking sessions now persist: force-quitting mid-cook and relaunching (via the app icon or the Live Activity) lands you back at the exact step and timer state instead of losing progress. Home gained a "Continue Cooking" card and a "Recent Recipes" history list covering active, paused, not-started, and completed cooks.
+- Redesigned Home around that history: one scrolling dashboard instead of separate screens, with recipe creation (camera, photos, paste, dish name) tucked behind a single "New Recipe" sheet.
+- Redesigned the cooking-step timer as a custom-drawn hourglass, replacing the old circular dial — visibly smaller so it doesn't crowd out the recipe, with sand that drains/fills while running, a subtle breathing/rocking idle animation, and a signature 180° flip when restarting it after it finishes. The duration can now be adjusted while the timer is running, and down to 1 minute regardless of the recipe's suggested time.
+- Fixed: navigating between recipe steps while a timer was running used to silently reset it. It now keeps counting in the background and restores exactly where it was when you return to that step.
+- Fixed: tapping "Continue Cooking" right after a fresh app launch could occasionally land on a blank Cooking screen (a SwiftUI navigation timing race), needing a second tap to work. Recipe/cooking-session data now travels directly on the navigation route instead of through a side channel, closing the race entirely.
+- Added a shake-to-open API log screen (TestFlight and debug builds only) showing every OpenAI request/response with success/failure, status code, and timing — for diagnosing generation issues without a debugger attached.
+
 ## 1.0 (5) — 2026-07-24
 
 - Added Recipe Import: capture recipe pages with the camera (multi-page document scanner, reorder/retake/add pages before processing) or pick multiple existing photos, then reconstruct the recipe via on-device Vision OCR + the existing AI parser — lands on the same Recipe Overview screen as pasting text. The parsing prompt was updated to handle noisy OCR input: duplicate/repeated text, watermarks, headers/footers/page numbers, out-of-order pages, and OCR misreads are cleaned up or ignored rather than trusted at face value. If some pages can't be read, the import continues with the readable ones instead of failing outright.

@@ -6,10 +6,9 @@
 //  or photo library picker -> shared review (reorder/delete/retake/add
 //  more) -> OCR + AI parsing -> hands the resulting Recipe back to
 //  HomeView via `onRecipeReady`, which does the exact same
-//  `session = RecipeSession(recipe:); path.append(.overview)` the
-//  paste-text flow already does. Deliberately just a few @State flags
-//  rather than a generic wizard framework — the flow is linear enough not
-//  to need one.
+//  `path.append(.overview(recipeSession, cookingSession))` the paste-text
+//  flow already does. Deliberately just a few @State flags rather than a
+//  generic wizard framework — the flow is linear enough not to need one.
 //
 
 import PhotosUI

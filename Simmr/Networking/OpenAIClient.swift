@@ -42,7 +42,7 @@ struct OpenAIClient {
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
+        let bodyData = try JSONSerialization.data(withJSONObject: [
             "model": model,
             "temperature": 0.2,
             "messages": [
@@ -58,29 +58,61 @@ struct OpenAIClient {
                 ],
             ],
         ])
+        request.httpBody = bodyData
+
+        // Single log point covering every exit path (success or any throw
+        // below) — see BuildEnvironment.isDebugToolsEnabled for where this
+        // is surfaced (shake-to-view on TestFlight/debug builds only).
+        let startedAt = Date()
+        var loggedStatusCode: Int?
+        var loggedResponseBody: String?
+        var loggedError: String?
+        defer {
+            let entry = APICallLog(
+                timestamp: startedAt,
+                endpoint: baseURL.lastPathComponent,
+                model: model,
+                requestBody: String(data: bodyData, encoding: .utf8),
+                statusCode: loggedStatusCode,
+                responseBody: loggedResponseBody,
+                error: loggedError,
+                duration: Date().timeIntervalSince(startedAt)
+            )
+            APIDebugLogStore.shared.log(entry)
+        }
 
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw OpenAIClientError.networkFailure(underlying: error)
+            let clientError = OpenAIClientError.networkFailure(underlying: error)
+            loggedError = clientError.errorDescription
+            throw clientError
         }
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            loggedError = OpenAIClientError.invalidResponse.errorDescription
             throw OpenAIClientError.invalidResponse
         }
+        loggedStatusCode = httpResponse.statusCode
+        loggedResponseBody = String(data: data, encoding: .utf8)
+
         guard (200..<300).contains(httpResponse.statusCode) else {
             let message = (try? JSONDecoder().decode(OpenAIErrorEnvelope.self, from: data))?.error.message
-            throw OpenAIClientError.requestFailed(statusCode: httpResponse.statusCode, message: message)
+            let clientError = OpenAIClientError.requestFailed(statusCode: httpResponse.statusCode, message: message)
+            loggedError = clientError.errorDescription
+            throw clientError
         }
 
         guard let completion = try? JSONDecoder().decode(ChatCompletionResponse.self, from: data) else {
+            loggedError = OpenAIClientError.malformedCompletion.errorDescription
             throw OpenAIClientError.malformedCompletion
         }
         guard let content = completion.choices.first?.message.content,
               let contentData = content.data(using: .utf8)
         else {
+            loggedError = OpenAIClientError.emptyCompletion.errorDescription
             throw OpenAIClientError.emptyCompletion
         }
 

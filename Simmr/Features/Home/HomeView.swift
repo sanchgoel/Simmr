@@ -15,29 +15,18 @@ import SwiftUI
 struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     @State private var path: [AppRoute] = []
-    @State private var session: RecipeSession?
     @State private var isShowingSettings = false
     @State private var isShowingImportFlow = false
     @State private var isShowingNewRecipeSheet = false
     @State private var pendingCreationOption: RecipeCreationOption?
     @State private var importSource: RecipeImportSource?
-    /// A restored/restarted session waiting to be handed to CookingModeView
-    /// the next time `.cooking` is pushed — consume-once (cleared as soon as
-    /// CookingModeView appears) so it never gets reapplied to an unrelated
-    /// cook started later in the same app run.
-    @State private var pendingRestoredCookingSession: CookingSession?
 
-    /// `initialSession`/`initialPath`/`initialCookingSession` let RootView
-    /// seed Home already inside an in-progress cook on a cold launch that
-    /// restored an active CookingSession, instead of always starting empty.
-    init(
-        initialSession: RecipeSession? = nil,
-        initialPath: [AppRoute] = [],
-        initialCookingSession: CookingSession? = nil
-    ) {
-        _session = State(initialValue: initialSession)
+    /// `initialPath` lets RootView seed Home already inside an in-progress
+    /// cook on a cold launch that restored an active CookingSession, instead
+    /// of always starting empty — the route itself carries whatever
+    /// RecipeSession/CookingSession that destination needs.
+    init(initialPath: [AppRoute] = []) {
         _path = State(initialValue: initialPath)
-        _pendingRestoredCookingSession = State(initialValue: initialCookingSession)
     }
 
     var body: some View {
@@ -112,15 +101,10 @@ struct HomeView: View {
                     NewRecipeView(viewModel: viewModel, mode: mode) { recipe in
                         Task { await handleRecipeReady(recipe) }
                     }
-                case .overview:
-                    if let session {
-                        RecipeOverviewView(session: session, path: $path)
-                    }
-                case .cooking:
-                    if let session {
-                        CookingModeView(session: session, path: $path, existingCookingSession: pendingRestoredCookingSession)
-                            .onAppear { pendingRestoredCookingSession = nil }
-                    }
+                case .overview(let session, let pendingCookingSession):
+                    RecipeOverviewView(session: session, pendingCookingSession: pendingCookingSession, path: $path)
+                case .cooking(let session, let existingCookingSession):
+                    CookingModeView(session: session, path: $path, existingCookingSession: existingCookingSession)
                 }
             }
         }
@@ -133,9 +117,8 @@ struct HomeView: View {
     /// just look at Overview and go back to Home.
     private func handleRecipeReady(_ recipe: Recipe) async {
         let recipeSession = RecipeSession(recipe: recipe)
-        session = recipeSession
-        pendingRestoredCookingSession = await viewModel.saveGeneratedRecipe(recipe, servings: recipeSession.servings)
-        path.append(.overview)
+        let cookingSession = await viewModel.saveGeneratedRecipe(recipe, servings: recipeSession.servings)
+        path.append(.overview(recipeSession, cookingSession))
     }
 
     private func beginImport(source: RecipeImportSource) {
@@ -284,9 +267,7 @@ struct HomeView: View {
     private func openCookingSession(_ cookingSession: CookingSession) {
         let recipeSession = RecipeSession(recipe: cookingSession.recipe)
         recipeSession.servings = cookingSession.servings
-        session = recipeSession
-        pendingRestoredCookingSession = cookingSession
-        path.append(.cooking)
+        path.append(.cooking(recipeSession, cookingSession))
     }
 
     /// Opens a completed or not-yet-started recipe's Overview rather than
@@ -297,9 +278,7 @@ struct HomeView: View {
     private func openForReview(_ cookingSession: CookingSession) {
         let recipeSession = RecipeSession(recipe: cookingSession.recipe)
         recipeSession.servings = cookingSession.servings
-        session = recipeSession
-        pendingRestoredCookingSession = cookingSession.restarted()
-        path.append(.overview)
+        path.append(.overview(recipeSession, cookingSession.restarted()))
     }
 }
 

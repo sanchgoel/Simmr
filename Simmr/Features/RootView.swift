@@ -17,6 +17,7 @@ struct RootView: View {
     /// `content` ever appears — LaunchAnimationView's ~1.4s fixed sequence
     /// comfortably outlasts a local UserDefaults read.
     @State private var restoredState = RestoredLaunchState.none
+    @State private var isShowingDebugLog = false
 
     init() {
         _isOnboardingComplete = State(initialValue: UserDefaultsKitchenProfileStore().load()?.isComplete ?? false)
@@ -40,16 +41,19 @@ struct RootView: View {
             guard isOnboardingComplete else { return }
             restoredState = await CookingSessionRestorer.restore()
         }
+        .onShake {
+            guard BuildEnvironment.isDebugToolsEnabled else { return }
+            isShowingDebugLog = true
+        }
+        .sheet(isPresented: $isShowingDebugLog) {
+            APIDebugLogView()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         if isOnboardingComplete {
-            HomeView(
-                initialSession: restoredState.recipeSession,
-                initialPath: restoredState.path,
-                initialCookingSession: restoredState.cookingSession
-            )
+            HomeView(initialPath: restoredState.path)
         } else {
             OnboardingContainerView {
                 isOnboardingComplete = true

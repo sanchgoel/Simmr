@@ -11,8 +11,15 @@ import Combine
 import Foundation
 
 @MainActor
-final class RecipeSession: ObservableObject {
+final class RecipeSession: ObservableObject, Hashable {
     let recipe: Recipe
+
+    /// Identity-based — this is a reference-type session, and two instances
+    /// are only ever "the same" if they're the literal same object. Needed
+    /// so `RecipeSession` can travel as `AppRoute` associated data (routes
+    /// must be `Hashable`).
+    static func == (lhs: RecipeSession, rhs: RecipeSession) -> Bool { lhs === rhs }
+    func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
 
     @Published var servings: Int {
         didSet { rescaleIngredients() }
