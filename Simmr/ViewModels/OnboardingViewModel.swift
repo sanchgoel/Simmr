@@ -97,6 +97,18 @@ final class OnboardingViewModel: ObservableObject {
         onComplete()
     }
 
+    /// Lets someone who's partway through the questions bypass the rest —
+    /// persists whatever was answered so far as complete, exactly like
+    /// finishing normally, so the app doesn't ask again on the next launch.
+    /// Recipe generation already falls back to no personalization for any
+    /// questions left unanswered. Only shown mid-questions during
+    /// first-time onboarding; closing mid-edit already keeps the profile
+    /// complete via close().
+    func skip() {
+        persist(isComplete: true)
+        onComplete()
+    }
+
     /// Dismisses without requiring the remaining questions to be answered.
     /// Only meaningful when `isEditing` — answers are already persisted
     /// incrementally as they're changed.

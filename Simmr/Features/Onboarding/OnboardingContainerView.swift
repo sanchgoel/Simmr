@@ -60,6 +60,16 @@ struct OnboardingContainerView: View {
                                 .clipShape(Circle())
                         }
                     }
+                } else if viewModel.showsProgressBar {
+                    // Only once someone's actually mid-questions — not on
+                    // the welcome screen (nothing to skip past yet) or the
+                    // final screen (already done).
+                    HStack {
+                        Spacer()
+                        Button("Skip", action: viewModel.skip)
+                            .font(Theme.Typography.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.Colors.textMuted)
+                    }
                 }
             }
 
