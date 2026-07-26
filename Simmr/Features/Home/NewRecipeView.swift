@@ -86,6 +86,9 @@ struct NewRecipeView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isGenerating)
+        .onAppear {
+            viewModel.resetNewRecipeInput()
+        }
     }
 
     private var pasteField: some View {

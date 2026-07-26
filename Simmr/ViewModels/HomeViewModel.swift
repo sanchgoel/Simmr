@@ -107,6 +107,18 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    /// `pastedText`/`optimizationOptions`/`errorMessage` live here rather
+    /// than as `@State` on NewRecipeView because HomeViewModel is a single
+    /// long-lived @StateObject owned by HomeView, not recreated per push —
+    /// so NewRecipeView.onAppear calls this to start each visit clean
+    /// instead of showing whatever was typed the last time the screen was
+    /// open.
+    func resetNewRecipeInput() {
+        pastedText = ""
+        optimizationOptions = []
+        errorMessage = nil
+    }
+
     func generateRecipe() async -> Recipe? {
         guard canGenerate else { return nil }
         isGenerating = true
