@@ -18,6 +18,12 @@ struct RootView: View {
     /// comfortably outlasts a local UserDefaults read.
     @State private var restoredState = RestoredLaunchState.none
     @State private var isShowingDebugLog = false
+    @ObservedObject private var authManager = AuthenticationManager.shared
+    /// Separate from `isOnboardingComplete` so already-onboarded installs
+    /// (from before sign-in existed) are prompted exactly once too, not
+    /// just fresh ones — set the moment LoginView is skipped or a sign-in
+    /// succeeds, never reset afterward.
+    @AppStorage("com.inspiredevstudio.simmr.hasSeenLoginPrompt") private var hasSeenLoginPrompt = false
 
     init() {
         _isOnboardingComplete = State(initialValue: UserDefaultsKitchenProfileStore().load()?.isComplete ?? false)
@@ -52,12 +58,16 @@ struct RootView: View {
 
     @ViewBuilder
     private var content: some View {
-        if isOnboardingComplete {
-            HomeView(initialPath: restoredState.path)
-        } else {
+        if !isOnboardingComplete {
             OnboardingContainerView {
                 isOnboardingComplete = true
             }
+        } else if authManager.currentUser == nil && !hasSeenLoginPrompt {
+            LoginView {
+                hasSeenLoginPrompt = true
+            }
+        } else {
+            HomeView(initialPath: restoredState.path)
         }
     }
 }

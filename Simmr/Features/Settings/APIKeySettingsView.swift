@@ -3,6 +3,7 @@
 //  Simmr
 //
 
+import FirebaseAuth
 import SwiftUI
 
 struct APIKeySettingsView: View {
@@ -10,6 +11,8 @@ struct APIKeySettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isFieldFocused: Bool
     @State private var isShowingOnboarding = false
+    @ObservedObject private var authManager = AuthenticationManager.shared
+    @State private var isShowingLogin = false
 
     var body: some View {
         NavigationStack {
@@ -71,6 +74,36 @@ struct APIKeySettingsView: View {
                     Link("Get an API key from platform.openai.com", destination: URL(string: "https://platform.openai.com/api-keys")!)
                         .font(Theme.Typography.footnote)
                         .foregroundStyle(Theme.Colors.coral)
+
+                    Divider()
+                        .overlay(Theme.Colors.border)
+
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                        Text("Account")
+                            .font(Theme.Typography.title3)
+                            .foregroundStyle(Theme.Colors.textDark)
+                        if let email = authManager.currentUser?.email {
+                            Text("Signed in as \(email)")
+                                .font(Theme.Typography.subheadline)
+                                .foregroundStyle(Theme.Colors.textMuted)
+                        } else {
+                            Text("Not signed in — your recipes and cooking history stay on this device only.")
+                                .font(Theme.Typography.subheadline)
+                                .foregroundStyle(Theme.Colors.textMuted)
+                        }
+                    }
+
+                    if authManager.currentUser != nil {
+                        Button("Sign Out", role: .destructive) {
+                            authManager.signOut()
+                        }
+                        .buttonStyle(.secondary)
+                    } else {
+                        Button("Sign In") {
+                            isShowingLogin = true
+                        }
+                        .buttonStyle(.secondary)
+                    }
 
                     Divider()
                         .overlay(Theme.Colors.border)
@@ -160,6 +193,11 @@ struct APIKeySettingsView: View {
             .fullScreenCover(isPresented: $isShowingOnboarding) {
                 OnboardingContainerView(isEditing: true) {
                     isShowingOnboarding = false
+                }
+            }
+            .fullScreenCover(isPresented: $isShowingLogin) {
+                LoginView {
+                    isShowingLogin = false
                 }
             }
         }
