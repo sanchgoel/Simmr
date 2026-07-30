@@ -2,9 +2,7 @@
 //  RecipeOptimizationOptions.swift
 //  Simmr
 //
-//  User-selectable toggles on the Home screen that steer how OpenAI adapts
-//  a pasted recipe (see RecipeParserService for how these become prompt
-//  instructions).
+//  User-selectable toggles sent to the backend when adapting a recipe.
 //
 
 import Foundation

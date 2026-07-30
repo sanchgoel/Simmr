@@ -44,9 +44,6 @@ struct NewRecipeView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 pasteField
                 optimizationToggles
-                if !viewModel.hasAPIKey {
-                    apiKeyPrompt
-                }
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(Theme.Typography.footnote)
@@ -74,10 +71,8 @@ struct NewRecipeView: View {
                 }
             }
         }
-        .sheet(isPresented: $isShowingSettings, onDismiss: {
-            viewModel.refreshAPIKeyStatus()
-        }) {
-            APIKeySettingsView()
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView()
         }
         .overlay {
             if viewModel.isGenerating {
@@ -158,26 +153,6 @@ struct NewRecipeView: View {
         }
         .buttonStyle(ChipButtonStyle())
         .animation(.easeInOut(duration: 0.15), value: isSelected)
-    }
-
-    private var apiKeyPrompt: some View {
-        Button {
-            isShowingSettings = true
-        } label: {
-            HStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: "key.fill")
-                Text("Add your OpenAI API key to generate recipes")
-                    .font(Theme.Typography.footnote)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .foregroundStyle(Theme.Colors.textDark)
-            .padding(Theme.Spacing.sm)
-            .background(Theme.Colors.tint)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
-        }
-        .buttonStyle(.plain)
     }
 
     private var generateButton: some View {

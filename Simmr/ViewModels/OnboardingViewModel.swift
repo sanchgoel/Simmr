@@ -21,7 +21,7 @@ final class OnboardingViewModel: ObservableObject {
     /// True when editing an already-completed profile from Settings, as
     /// opposed to first-time onboarding. Skips the welcome screen, keeps
     /// the profile marked complete while editing (so it doesn't drop back
-    /// out of RecipeParserService's personalization), and shows a close
+    /// out of BackendRecipeService's personalization), and shows a close
     /// button so the user isn't forced through the remaining questions.
     let isEditing: Bool
     private let store: KitchenProfileStoring

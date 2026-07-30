@@ -76,10 +76,8 @@ struct HomeView: View {
                     }
                 }
             }
-            .sheet(isPresented: $isShowingSettings, onDismiss: {
-                viewModel.refreshAPIKeyStatus()
-            }) {
-                APIKeySettingsView()
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsView()
             }
             .fullScreenCover(isPresented: $isShowingImportFlow) {
                 RecipeImportFlowView(

@@ -3,10 +3,9 @@
 //  Simmr
 //
 //  Orchestrates the import pipeline: RecipeTextExtracting (Vision OCR) ->
-//  RecipeGenerating.generateRecipe(from:options:) — the exact same entry
-//  point the paste-text flow already uses, so personalization,
-//  optimization instructions, and the OpenAI call are all shared, unchanged
-//  code paths.
+//  RecipeGenerating.generateRecipe(from:options:) — the exact same backend
+//  entry point the paste-text flow uses, so personalization and optimization
+//  behavior stay consistent.
 //
 
 import Combine
@@ -15,7 +14,7 @@ import Foundation
 enum ImportPhase: Equatable {
     /// Real progress — OCR runs locally, so we know exactly how far along it is.
     case readingImages(done: Int, total: Int)
-    /// The OpenAI call is a single non-streamed request, so this phase has
+    /// The backend call is a single non-streamed request, so this phase has
     /// no real progress to report — the UI cycles cosmetic messages instead.
     case parsingRecipe
 }
@@ -31,7 +30,7 @@ final class RecipeImportViewModel: ObservableObject {
 
     init(textExtractor: RecipeTextExtracting? = nil, recipeProvider: RecipeGenerating? = nil) {
         self.textExtractor = textExtractor ?? VisionRecipeTextExtractor()
-        self.recipeProvider = recipeProvider ?? RecipeParserService()
+        self.recipeProvider = recipeProvider ?? BackendRecipeService()
     }
 
     var isProcessing: Bool { phase != nil }

@@ -12,7 +12,6 @@ final class HomeViewModel: ObservableObject {
     @Published var optimizationOptions: RecipeOptimizationOptions = []
     @Published private(set) var isGenerating: Bool = false
     @Published var errorMessage: String?
-    @Published private(set) var hasAPIKey: Bool
     /// The most recently updated active-or-paused session, if any — drives
     /// the "Continue Cooking" card. Deliberately excludes `.notStarted`: a
     /// generated-but-never-begun recipe belongs in Recent Recipes, not
@@ -38,18 +37,13 @@ final class HomeViewModel: ObservableObject {
     }
 
     private let recipeProvider: RecipeGenerating
-    private let apiKeyStore: APIKeyStoring
     private let cookingSessionRepository: CookingSessionRepository
 
     init(
         recipeProvider: RecipeGenerating? = nil,
-        apiKeyStore: APIKeyStoring? = nil,
         cookingSessionRepository: CookingSessionRepository? = nil
     ) {
-        let apiKeyStore = apiKeyStore ?? KeychainAPIKeyStore()
-        self.apiKeyStore = apiKeyStore
-        self.recipeProvider = recipeProvider ?? RecipeParserService(apiKeyStore: apiKeyStore)
-        self.hasAPIKey = apiKeyStore.apiKey?.isEmpty == false
+        self.recipeProvider = recipeProvider ?? BackendRecipeService()
         self.cookingSessionRepository = cookingSessionRepository ?? LocalCookingSessionRepository()
     }
 
@@ -115,10 +109,6 @@ final class HomeViewModel: ObservableObject {
     func deleteSession(_ session: CookingSession) async {
         try? await cookingSessionRepository.delete(id: session.id)
         await refreshSessions()
-    }
-
-    func refreshAPIKeyStatus() {
-        hasAPIKey = apiKeyStore.apiKey?.isEmpty == false
     }
 
     var canGenerate: Bool {

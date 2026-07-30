@@ -2,7 +2,7 @@
 //  RecipeGenerating.swift
 //  Simmr
 //
-//  Abstraction over "turn pasted text into a Recipe". RecipeParserService
+//  Abstraction over "turn pasted text into a Recipe". BackendRecipeService
 //  (OpenAI-backed) is the live conformer; MockRecipeProvider below stays
 //  around for SwiftUI Previews and offline development.
 //

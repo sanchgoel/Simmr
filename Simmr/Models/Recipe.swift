@@ -2,9 +2,8 @@
 //  Recipe.swift
 //  Simmr
 //
-//  Core recipe data model. Matches the JSON Schema sent to OpenAI's
-//  Structured Outputs (see RecipeJSONSchema) field-for-field, so decoding a
-//  model response is a direct JSONDecoder pass with no translation layer.
+//  Core recipe data model. Matches the backend's recipe response
+//  field-for-field, so decoding is a direct JSONDecoder pass.
 //
 
 import Foundation

@@ -2,8 +2,8 @@
 //  RecipeUserProfile.swift
 //  Simmr
 //
-//  The subset of the user's Kitchen Profile answers sent to OpenAI to
-//  personalize recipe generation (see RecipeParserService). Field names
+//  The subset of the user's Kitchen Profile answers sent to Simmr's backend
+//  to personalize recipe generation. Field names
 //  match the API contract the recipe prompt expects; values are the app's
 //  own internal onboarding option ids (see OnboardingQuestions) passed
 //  straight through — they're already short, self-descriptive snake_case
