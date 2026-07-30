@@ -9,9 +9,20 @@ import SwiftUI
 
 struct RecipeCollectionsSection: View {
     @ObservedObject var controller: RecipeCollectionsController
+    let showsFilterButton: Bool
     let onSelectRecipe: (Recipe) -> Void
 
     @State private var isShowingFilters = false
+
+    init(
+        controller: RecipeCollectionsController,
+        showsFilterButton: Bool = true,
+        onSelectRecipe: @escaping (Recipe) -> Void
+    ) {
+        self.controller = controller
+        self.showsFilterButton = showsFilterButton
+        self.onSelectRecipe = onSelectRecipe
+    }
 
     var body: some View {
         if shouldShowSection {
@@ -57,45 +68,15 @@ struct RecipeCollectionsSection: View {
 
             Spacer()
 
-            Button {
-                isShowingFilters = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "line.3.horizontal.decrease")
-                    Text(filterButtonTitle)
+            if showsFilterButton {
+                RecipeFilterButton(
+                    selectedCount: controller.selectedFilters.count,
+                    isEnabled: !controller.filterOptions.isEmpty
+                ) {
+                    isShowingFilters = true
                 }
-                .font(Theme.Typography.caption)
-                .foregroundStyle(
-                    controller.selectedFilters.isEmpty ?
-                    Theme.Colors.textDark :
-                    Theme.Colors.coral
-                )
-                .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.vertical, 7)
-                .background(
-                    controller.selectedFilters.isEmpty ?
-                    Theme.Colors.creamCard :
-                    Theme.Colors.tint
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            controller.selectedFilters.isEmpty ?
-                            Theme.Colors.border :
-                            Theme.Colors.coral,
-                            lineWidth: Theme.Stroke.hairline
-                        )
-                )
-                .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
-            .disabled(controller.filterOptions.isEmpty)
         }
-    }
-
-    private var filterButtonTitle: String {
-        let count = controller.selectedFilters.count
-        return count == 0 ? "Filter" : "Filter · \(count)"
     }
 
     private var loadingCard: some View {
@@ -274,7 +255,42 @@ struct RecipeCollectionsSection: View {
     }
 }
 
-private struct RecipeFiltersSheet: View {
+struct RecipeFilterButton: View {
+    let selectedCount: Int
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal.decrease")
+                Text(title)
+            }
+            .font(Theme.Typography.caption)
+            .foregroundStyle(selectedCount == 0 ? Theme.Colors.textDark : Theme.Colors.coral)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .frame(height: 38)
+            .background(selectedCount == 0 ? Theme.Colors.creamCard : Theme.Colors.tint)
+            .overlay(
+                Capsule()
+                    .strokeBorder(
+                        selectedCount == 0 ? Theme.Colors.border : Theme.Colors.coral,
+                        lineWidth: Theme.Stroke.hairline
+                    )
+            )
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.5)
+    }
+
+    private var title: String {
+        selectedCount == 0 ? "Filter" : "Filter · \(selectedCount)"
+    }
+}
+
+struct RecipeFiltersSheet: View {
     let options: RecipeFilterOptions
     @Binding var selection: RecipeFilterSelection
 
