@@ -212,9 +212,10 @@ struct RecipeCollectionsSection: View {
                         .foregroundStyle(Theme.Colors.coral)
                 }
                 .padding(.top, Theme.Spacing.xs)
+                .frame(height: 32, alignment: .bottom)
             }
             .padding(Theme.Spacing.md)
-            .frame(width: 252, height: 168, alignment: .leading)
+            .frame(width: 252, height: 176, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

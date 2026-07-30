@@ -3,7 +3,7 @@
 //  Simmr
 //
 //  Gates the app behind onboarding until the user has a completed Kitchen
-//  Profile. Once complete, shows Home for the rest of the app's lifetime.
+//  Profile. Once complete, shows the app's main tab navigation.
 //
 
 import SwiftUI
@@ -77,7 +77,7 @@ struct RootView: View {
                 hasSeenLoginPrompt = true
             }
         } else {
-            HomeView(initialPath: restoredState.path)
+            MainTabView(initialHomePath: restoredState.path)
         }
     }
 }

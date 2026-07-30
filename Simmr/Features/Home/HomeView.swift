@@ -106,10 +106,13 @@ struct HomeView: View {
                     NewRecipeView(viewModel: viewModel, mode: mode) { recipe in
                         Task { await handleRecipeReady(recipe) }
                     }
+                    .toolbar(.hidden, for: .tabBar)
                 case .overview(let session, let pendingCookingSession):
                     RecipeOverviewView(session: session, pendingCookingSession: pendingCookingSession, path: $path)
+                        .toolbar(.hidden, for: .tabBar)
                 case .cooking(let session, let existingCookingSession):
                     CookingModeView(session: session, path: $path, existingCookingSession: existingCookingSession)
+                        .toolbar(.hidden, for: .tabBar)
                 }
             }
         }
