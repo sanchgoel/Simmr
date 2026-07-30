@@ -18,9 +18,15 @@ struct ExploreView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                         VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                            Text("Explore")
-                                .font(Theme.Typography.largeTitle)
-                                .foregroundStyle(Theme.Colors.textDark)
+                            HStack(spacing: Theme.Spacing.sm) {
+                                Text("Explore")
+                                    .font(Theme.Typography.largeTitle)
+                                    .foregroundStyle(Theme.Colors.textDark)
+
+                                Spacer(minLength: Theme.Spacing.xs)
+
+                                foodPreferenceSelector
+                            }
 
                             Text("Discover recipes picked for every kind of craving.")
                                 .font(Theme.Typography.subheadline)
@@ -80,10 +86,10 @@ struct ExploreView: View {
 
     private var filterControls: some View {
         HStack(spacing: 0) {
-            quickFilters
-
             filterButtonSection
                 .zIndex(1)
+
+            quickFilters
         }
     }
 
@@ -130,8 +136,8 @@ struct ExploreView: View {
                 }
             }
         }
-        .contentMargins(.leading, 1, for: .scrollContent)
-        .contentMargins(.trailing, Theme.Spacing.sm, for: .scrollContent)
+        .contentMargins(.leading, Theme.Spacing.sm, for: .scrollContent)
+        .contentMargins(.trailing, 1, for: .scrollContent)
     }
 
     private var allFiltersPill: some View {
@@ -153,33 +159,57 @@ struct ExploreView: View {
         ) {
             isShowingFilters = true
         }
-        .padding(.leading, Theme.Spacing.sm)
+        .padding(.trailing, Theme.Spacing.sm)
         .background(Theme.Colors.creamBackground)
-        .overlay(alignment: .leading) {
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    Theme.Colors.textDark.opacity(0.06)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 20, height: 34)
-            .clipShape(Capsule())
-            .offset(x: -17)
-            .overlay(alignment: .trailing) {
-                Rectangle()
-                    .fill(Theme.Colors.creamBackground)
-                    .frame(width: Theme.Stroke.hairline, height: 24)
-                    .shadow(
-                        color: Theme.Colors.textDark.opacity(0.06),
-                        radius: 5,
-                        x: -2,
-                        y: 0
-                    )
-            }
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(Theme.Colors.creamBackground)
+                .frame(width: Theme.Stroke.hairline, height: 28)
+                .shadow(
+                    color: Theme.Colors.textDark.opacity(0.08),
+                    radius: 4,
+                    x: 3,
+                    y: 0
+                )
             .allowsHitTesting(false)
         }
+    }
+
+    private var foodPreferenceSelector: some View {
+        HStack(spacing: 2) {
+            ForEach(RecipeFoodPreference.allCases) { preference in
+                let isSelected = controller.selectedFilters.foodPreference == preference
+
+                Button {
+                    var selection = controller.selectedFilters
+                    selection.foodPreference = preference
+
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        controller.selectedFilters = selection
+                    }
+                } label: {
+                    Text(preference.title)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(isSelected ? Color.white : Theme.Colors.textMuted)
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .frame(height: 30)
+                        .background(isSelected ? Theme.Colors.coral : Color.clear)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Theme.Colors.creamCard)
+        .overlay(
+            Capsule()
+                .strokeBorder(Theme.Colors.border, lineWidth: Theme.Stroke.hairline)
+        )
+        .clipShape(Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Food preference")
     }
 
     private func quickFilterPill(
@@ -210,10 +240,14 @@ struct ExploreView: View {
     }
 
     private var quickFilterOptions: [ExploreQuickFilter] {
-        [
+        let dietaryTags = controller.filterOptions.dietaryTags.filter {
+            !RecipeFoodPreference.isVegetarianTag($0)
+        }
+
+        return [
             (category: ExploreQuickFilter.Category.totalTime, values: controller.filterOptions.totalTimes),
             (category: .meal, values: controller.filterOptions.mealTypes),
-            (category: .dietary, values: controller.filterOptions.dietaryTags),
+            (category: .dietary, values: dietaryTags),
             (category: .difficulty, values: controller.filterOptions.difficulties),
             (category: .cuisine, values: controller.filterOptions.cuisines),
             (category: .calories, values: controller.filterOptions.calorieRanges),

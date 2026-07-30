@@ -95,6 +95,7 @@ struct RecipeFilterOptions: Decodable {
 }
 
 struct RecipeFilterSelection: Equatable {
+    var foodPreference: RecipeFoodPreference = .all
     var cuisines: Set<String> = []
     var mealTypes: Set<String> = []
     var dietaryTags: Set<String> = []
@@ -104,6 +105,7 @@ struct RecipeFilterSelection: Equatable {
     var servingSizes: Set<String> = []
 
     var count: Int {
+        (foodPreference == .all ? 0 : 1) +
         cuisines.count +
         mealTypes.count +
         dietaryTags.count +
@@ -120,6 +122,7 @@ struct RecipeFilterSelection: Equatable {
     }
 
     func matches(_ recipe: Recipe) -> Bool {
+        foodPreference.matches(recipe) &&
         matchesSingleValue(recipe.cuisine, selected: cuisines) &&
         matchesAnyValue(recipe.mealType, selected: mealTypes) &&
         matchesAnyValue(recipe.dietaryTags, selected: dietaryTags) &&
@@ -183,6 +186,48 @@ struct RecipeFilterSelection: Equatable {
             default: false
             }
         }
+    }
+}
+
+enum RecipeFoodPreference: String, CaseIterable, Identifiable {
+    case all
+    case vegetarian
+    case nonVegetarian
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .vegetarian: "Veg"
+        case .nonVegetarian: "Non-Veg"
+        }
+    }
+
+    func matches(_ recipe: Recipe) -> Bool {
+        switch self {
+        case .all:
+            true
+        case .vegetarian:
+            recipe.dietaryTags.contains(where: Self.isVegetarianTag)
+        case .nonVegetarian:
+            !recipe.dietaryTags.contains(where: Self.isVegetarianTag)
+        }
+    }
+
+    nonisolated static func isVegetarianTag(_ tag: String) -> Bool {
+        let normalized = tag
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: " ")
+
+        if normalized.hasPrefix("non ") && normalized.contains("vegetarian") {
+            return false
+        }
+
+        return normalized == "vegan" ||
+            normalized == "vegetarian" ||
+            normalized.hasSuffix(" vegetarian")
     }
 }
 
