@@ -14,6 +14,7 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var recipeCollectionsController = RecipeCollectionsController()
     @State private var path: [AppRoute] = []
     @State private var isShowingSettings = false
     @State private var isShowingImportFlow = false
@@ -93,7 +94,11 @@ struct HomeView: View {
                 )
             }
             .onAppear {
-                Task { await viewModel.refreshSessions() }
+                Task {
+                    async let sessions: Void = viewModel.refreshSessions()
+                    async let collections: Void = recipeCollectionsController.loadIfNeeded()
+                    _ = await (sessions, collections)
+                }
             }
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
@@ -137,6 +142,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 header
                 createRecipeSection
+                recipeCollectionsSection
             }
             .padding(Theme.Spacing.lg)
         }
@@ -184,6 +190,8 @@ struct HomeView: View {
                     bottomPadding: Theme.Spacing.sm
                 )
             }
+
+            row(recipeCollectionsSection, bottomPadding: Theme.Spacing.sm)
 
             if !viewModel.recentSessions.isEmpty {
                 row(
@@ -236,6 +244,13 @@ struct HomeView: View {
         }
     }
 
+    private var recipeCollectionsSection: some View {
+        RecipeCollectionsSection(
+            controller: recipeCollectionsController,
+            onSelectRecipe: openLibraryRecipe
+        )
+    }
+
     /// Wraps content as a List row with no default List chrome (background,
     /// separator) so the List reads as our usual cream-card layout rather
     /// than a system list — used for every row except where `.swipeActions`
@@ -279,6 +294,13 @@ struct HomeView: View {
         let recipeSession = RecipeSession(recipe: cookingSession.recipe)
         recipeSession.servings = cookingSession.servings
         path.append(.overview(recipeSession, cookingSession.restarted()))
+    }
+
+    /// Library recipes are only persisted if cooking actually starts.
+    /// Browsing a curated recipe should not add it to Recent Recipes by
+    /// itself, so Overview receives no staged CookingSession here.
+    private func openLibraryRecipe(_ recipe: Recipe) {
+        path.append(.overview(RecipeSession(recipe: recipe), nil))
     }
 }
 

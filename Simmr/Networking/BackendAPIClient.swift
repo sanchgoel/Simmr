@@ -54,6 +54,22 @@ struct BackendAPIClient {
         self.session = session
     }
 
+    func get<ResponseBody: Decodable>(
+        path: String,
+        responseType: ResponseBody.Type = ResponseBody.self
+    ) async throws -> ResponseBody {
+        let url = configuration.baseURL.appending(path: path)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        return try await send(
+            request,
+            requestBody: nil,
+            responseType: responseType
+        )
+    }
+
     func post<RequestBody: Encodable, ResponseBody: Decodable>(
         path: String,
         body: RequestBody,
@@ -67,6 +83,21 @@ struct BackendAPIClient {
         let bodyData = try JSONEncoder().encode(body)
         request.httpBody = bodyData
 
+        return try await send(
+            request,
+            requestBody: bodyData,
+            responseType: responseType
+        )
+    }
+
+    private func send<ResponseBody: Decodable>(
+        _ request: URLRequest,
+        requestBody: Data?,
+        responseType: ResponseBody.Type
+    ) async throws -> ResponseBody {
+        guard let url = request.url else {
+            throw BackendAPIClientError.invalidConfiguration
+        }
         let startedAt = Date()
         var loggedStatusCode: Int?
         var loggedResponseBody: String?
@@ -76,7 +107,9 @@ struct BackendAPIClient {
                 timestamp: startedAt,
                 endpoint: url.path,
                 model: nil,
-                requestBody: String(data: bodyData, encoding: .utf8),
+                requestBody: requestBody.flatMap {
+                    String(data: $0, encoding: .utf8)
+                },
                 statusCode: loggedStatusCode,
                 responseBody: loggedResponseBody,
                 error: loggedError,
