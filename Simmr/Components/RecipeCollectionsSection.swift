@@ -173,23 +173,28 @@ struct RecipeCollectionsSection: View {
         Button {
             onSelectRecipe(libraryRecipe.recipe)
         } label: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text(libraryRecipe.recipe.title)
-                    .font(Theme.Typography.headline)
-                    .foregroundStyle(Theme.Colors.textDark)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-
-                if let description = libraryRecipe.recipe.description,
-                   !description.isEmpty {
-                    Text(description)
-                        .font(Theme.Typography.footnote)
-                        .foregroundStyle(Theme.Colors.textMuted)
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                    Text(libraryRecipe.recipe.title)
+                        .font(Theme.Typography.headline)
+                        .foregroundStyle(Theme.Colors.textDark)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(2)
-                }
+                        .lineLimit(1)
 
-                Spacer(minLength: 0)
+                    if let description = libraryRecipe.recipe.description,
+                       !description.isEmpty {
+                        Text(description)
+                            .font(Theme.Typography.footnote)
+                            .foregroundStyle(Theme.Colors.textMuted)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(height: 64, alignment: .top)
+
+                Divider()
+                    .overlay(Theme.Colors.border)
+                    .padding(.vertical, Theme.Spacing.xs)
 
                 recipeMetadata(libraryRecipe.recipe)
 
@@ -206,9 +211,10 @@ struct RecipeCollectionsSection: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Theme.Colors.coral)
                 }
+                .padding(.top, Theme.Spacing.xs)
             }
             .padding(Theme.Spacing.md)
-            .frame(width: 252, height: 184, alignment: .leading)
+            .frame(width: 252, height: 168, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -219,11 +225,34 @@ struct RecipeCollectionsSection: View {
     private func recipeMetadata(_ recipe: Recipe) -> some View {
         HStack(spacing: Theme.Spacing.sm) {
             if let totalMinutes = totalMinutes(for: recipe) {
-                Label("\(totalMinutes) min", systemImage: "clock")
+                metadataItem(
+                    icon: "clock",
+                    text: "\(totalMinutes) min"
+                )
             }
-            Label("\(recipe.servings)", systemImage: "person.2")
+            metadataItem(
+                icon: "person.2",
+                text: "\(recipe.servings)"
+            )
+            if let calories = recipe.caloriesPerServing {
+                metadataItem(
+                    icon: "flame",
+                    text: "\(calories) kcal"
+                )
+            }
         }
-        .font(Theme.Typography.caption2)
+        .lineLimit(1)
+    }
+
+    private func metadataItem(icon: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 14)
+
+            Text(text)
+                .font(Theme.Typography.caption2)
+        }
         .foregroundStyle(Theme.Colors.textMuted)
     }
 
