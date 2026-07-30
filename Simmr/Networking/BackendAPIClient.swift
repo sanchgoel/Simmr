@@ -17,7 +17,7 @@ struct BackendConfiguration {
         bundle: Bundle = .main,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> BackendConfiguration {
-        let defaultURL = "https://us-central1-simmr-d0a9c.cloudfunctions.net/webApi"
+        let defaultURL = "https://webapi-bgelt7ybza-uc.a.run.app"
         let baseURLString = environment["SIMMR_BACKEND_BASE_URL"] ?? defaultURL
         guard let baseURL = URL(string: baseURLString) else {
             throw BackendAPIClientError.invalidConfiguration
