@@ -14,6 +14,10 @@ Before archiving a new TestFlight build:
 
 ## [Unreleased]
 
+## 1.0 (10) — 2026-08-01
+
+- Re-upload of 1.0 (9) — same code, no changes, just a bumped build number.
+
 ## 1.0 (9) — 2026-08-01
 
 - Added a post-cooking feedback flow: right after finishing a recipe, rate it 1-5 stars, then either show it off (optional photo + share) or tell us what to improve (recipe, cooking guidance, AI generation, or app experience, with an optional note) — synced to Firestore for review.
