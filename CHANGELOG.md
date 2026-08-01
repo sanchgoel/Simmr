@@ -14,6 +14,18 @@ Before archiving a new TestFlight build:
 
 ## [Unreleased]
 
+## 1.0 (9) — 2026-08-01
+
+- Added a post-cooking feedback flow: right after finishing a recipe, rate it 1-5 stars, then either show it off (optional photo + share) or tell us what to improve (recipe, cooking guidance, AI generation, or app experience, with an optional note) — synced to Firestore for review.
+- The Cooking Mode Live Activity no longer disappears the instant you finish — it now shows a "rate this dish" card (Lock Screen + Dynamic Island) with Rate/Not now, so finishing from the Lock Screen while the app is backgrounded or closed still gets you a feedback prompt. Tapping Rate deep-links straight into the feedback flow for that cook, even from a cold launch.
+- The screen no longer auto-locks while a cooking timer is actively running.
+- Redesigned Cooking Mode for one-handed use: Previous/Next are now floating circular buttons docked near the bottom instead of full-width buttons eating vertical space, and the timer card is smaller, centered, and no longer resizes as it moves between idle/running/paused/complete.
+- Fixed: the Firestore sync for feedback used a fire-and-forget write that could silently fail (e.g. on a rules rejection) with no signal anywhere. It now awaits the real server round-trip and logs success/failure.
+
+## 1.0 (8) — 2026-07-31
+
+- Removed the embedded recipe-collections section from Home — the dedicated Explore tab already covers browsing curated collections, so the copy on Home just duplicated the network call and UI.
+
 ## 1.0 (7) — 2026-07-26
 
 - Added Sign in with Apple and Sign in with Google (via Firebase Auth), shown once after onboarding — skippable, since the app still works fully signed out. Settings gained an Account section to sign in/out later.
