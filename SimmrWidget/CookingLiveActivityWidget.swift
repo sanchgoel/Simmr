@@ -16,51 +16,84 @@ import WidgetKit
 struct CookingLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CookingActivityAttributes.self) { context in
-            LockScreenView(state: context.state)
+            if context.state.isFinished {
+                FinishedLockScreenView(attributes: context.attributes)
+            } else {
+                LockScreenView(state: context.state)
+            }
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("🍳")
-                        .font(.title2)
+                    if !context.state.isFinished {
+                        Text("🍳")
+                            .font(.title2)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TimerBadge(state: context.state, font: .headline)
+                    if !context.state.isFinished {
+                        TimerBadge(state: context.state, font: .headline)
+                    }
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.stepTitle)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(WidgetTheme.islandTextPrimary)
-                            .lineLimit(1)
-                            .contentTransition(.opacity)
-                        Text("Step \(context.state.stepNumber) of \(context.state.totalSteps)")
-                            .font(.caption2)
-                            .foregroundStyle(WidgetTheme.islandTextMuted)
+                    if context.state.isFinished {
+                        FinishedIslandView(attributes: context.attributes)
+                    } else {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(context.state.stepTitle)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(WidgetTheme.islandTextPrimary)
+                                .lineLimit(1)
+                                .contentTransition(.opacity)
+                            Text("Step \(context.state.stepNumber) of \(context.state.totalSteps)")
+                                .font(.caption2)
+                                .foregroundStyle(WidgetTheme.islandTextMuted)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .animation(.easeInOut(duration: 0.3), value: context.state.currentStepIndex)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .animation(.easeInOut(duration: 0.3), value: context.state.currentStepIndex)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    ActionRow(
-                        state: context.state,
-                        mutedTint: WidgetTheme.islandTextMuted,
-                        accentTint: WidgetTheme.coral
-                    )
+                    if context.state.isFinished {
+                        EmptyView()
+                    } else {
+                        ActionRow(
+                            state: context.state,
+                            mutedTint: WidgetTheme.islandTextMuted,
+                            accentTint: WidgetTheme.coral
+                        )
+                    }
                 }
             } compactLeading: {
-                Text("🍳")
+                Text(context.state.isFinished ? "🎉" : "🍳")
                     .font(.system(size: 15))
             } compactTrailing: {
-                TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
+                if context.state.isFinished {
+                    Text("🎉")
+                        .font(.system(size: 15))
+                } else {
+                    TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
+                }
             } minimal: {
                 // The minimal presentation only appears when another Live
                 // Activity is competing for space, and Apple's own
                 // convention is a single glyph there — the timer is the
                 // more useful of the two at that size, so it's shown alone.
-                TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
+                if context.state.isFinished {
+                    Text("🎉")
+                        .font(.system(size: 15))
+                } else {
+                    TimerBadge(state: context.state, font: .caption2.monospacedDigit(), compact: true)
+                }
             }
         }
     }
+}
+
+/// Deep link opened by the finished card's "Rate it" tap — routes straight
+/// to the post-cooking feedback flow for this session, whether or not the
+/// app is still alive. See SimmrApp.onOpenURL / DeepLinkRouter.
+private func feedbackURL(sessionID: UUID) -> URL {
+    URL(string: "simmr://feedback?sessionID=\(sessionID.uuidString)")!
 }
 
 /// The timer/step-count glyph shown in the Dynamic Island's trailing,
@@ -314,5 +347,84 @@ private struct LockScreenView: View {
 
     private static func formattedTime(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+/// "Rate it" (Link — opens the app to the feedback flow) / "Not now"
+/// (Button(intent:) — ends the Activity without opening the app) row shown
+/// once cooking finishes. Shared by the Lock Screen and Dynamic Island
+/// expanded presentations, matching how ActionRow above is shared for the
+/// in-progress state.
+private struct FeedbackPromptActionRow: View {
+    let sessionID: UUID
+    let mutedTint: Color
+    let accentTint: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(intent: DismissFeedbackPromptIntent()) {
+                Text("Not now").lineLimit(1)
+            }
+            .buttonStyle(FilledButtonStyle(fill: mutedTint))
+
+            Link(destination: feedbackURL(sessionID: sessionID)) {
+                Text("⭐ Rate it").lineLimit(1)
+            }
+            .buttonStyle(FilledButtonStyle(fill: accentTint))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .font(.caption.weight(.semibold))
+    }
+}
+
+private struct FinishedLockScreenView: View {
+    let attributes: CookingActivityAttributes
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("🎉 \(attributes.recipeTitle) is ready!")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(WidgetTheme.textDark)
+                .lineLimit(2)
+
+            Text("How did it turn out?")
+                .font(.subheadline)
+                .foregroundStyle(WidgetTheme.textDark.opacity(0.8))
+
+            FeedbackPromptActionRow(
+                sessionID: attributes.sessionID,
+                mutedTint: WidgetTheme.textMuted,
+                accentTint: WidgetTheme.coral
+            )
+            .padding(.top, 2)
+        }
+        .padding(16)
+        .activityBackgroundTint(WidgetTheme.creamBackground)
+        .activitySystemActionForegroundColor(WidgetTheme.textDark)
+    }
+}
+
+private struct FinishedIslandView: View {
+    let attributes: CookingActivityAttributes
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("🎉 \(attributes.recipeTitle) is ready!")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(WidgetTheme.islandTextPrimary)
+                .lineLimit(2)
+
+            Text("How did it turn out?")
+                .font(.caption2)
+                .foregroundStyle(WidgetTheme.islandTextMuted)
+
+            FeedbackPromptActionRow(
+                sessionID: attributes.sessionID,
+                mutedTint: WidgetTheme.islandTextMuted,
+                accentTint: WidgetTheme.coral
+            )
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

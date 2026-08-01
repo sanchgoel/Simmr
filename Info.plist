@@ -10,6 +10,14 @@
 				<string>com.googleusercontent.apps.116863065588-1da2gcbt0vin0rc2104lk8nml4l6lvlm</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.inspiredevstudio.simmr.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>simmr</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

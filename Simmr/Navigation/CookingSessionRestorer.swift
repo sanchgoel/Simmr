@@ -31,7 +31,17 @@ enum CookingSessionRestorer {
 
         var session = persisted
 
-        if let live = LiveActivityManager.shared.liveState(for: persisted.id) {
+        if let live = LiveActivityManager.shared.liveState(for: persisted.id), live.isFinished {
+            // Finished via the Live Activity's own button while the app was
+            // dead — the Activity stays alive to show its rate-this-dish
+            // card, but there's no cooking left to resume into. Mark it
+            // completed so Home reflects reality instead of still showing
+            // it as active/resumable.
+            session.status = .completed
+            session.updatedAt = Date()
+            try? await repository.save(session)
+            return .none
+        } else if let live = LiveActivityManager.shared.liveState(for: persisted.id) {
             // The Live Activity may be ahead of what's on disk — the user
             // could have tapped Next/Previous/Finish on it while the app
             // itself was killed, which only ActivityKit's cross-process

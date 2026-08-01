@@ -35,6 +35,12 @@ struct CookingActivityAttributes: ActivityAttributes {
         /// derive a live countdown from in that state.
         var pausedRemainingSeconds: Int?
         var isTimerComplete: Bool
+        /// True once the recipe has been finished (in-app Finish button, or
+        /// the Live Activity's own "🍽 Finish Recipe" button) — the Activity
+        /// stays alive past this point rather than ending immediately, so it
+        /// can show a "rate this dish" card instead of just disappearing.
+        /// See LiveActivityManager.showFinishedPrompt().
+        var isFinished: Bool = false
 
         var totalSteps: Int { stepTitles.count }
         var stepNumber: Int { currentStepIndex + 1 }

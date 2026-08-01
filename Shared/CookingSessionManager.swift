@@ -49,9 +49,27 @@ enum CookingSessionManager {
         logger.log("advanceStep: update() call completed")
     }
 
-    /// Ends the running Activity — invoked by the "🍽 Finish Recipe" button
-    /// on the final step.
+    /// Invoked by the "🍽 Finish Recipe" button on the final step. Doesn't
+    /// end the Activity — flips it into its "finished" content state so it
+    /// can show a rate-this-dish card instead of just disappearing. The app
+    /// (if alive) picks this up via LiveActivityManager's content
+    /// observation and shows the in-app feedback flow too; either way, the
+    /// Activity itself stays on the Lock Screen until dismissFeedbackPrompt()
+    /// or the app ends it after feedback is answered.
     static func finishRecipe() async {
+        guard let activity = Activity<CookingActivityAttributes>.activities.first else { return }
+        var state = activity.content.state
+        state.isFinished = true
+        state.timerEndDate = nil
+        state.isTimerPaused = false
+        state.pausedRemainingSeconds = nil
+        await activity.update(ActivityContent(state: state, staleDate: nil))
+    }
+
+    /// Ends the running Activity — invoked by the finished card's "Not now"
+    /// button, the only way to dismiss the rate-this-dish prompt without
+    /// opening the app.
+    static func dismissFeedbackPrompt() async {
         guard let activity = Activity<CookingActivityAttributes>.activities.first else { return }
         await activity.end(nil, dismissalPolicy: .immediate)
     }

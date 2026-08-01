@@ -26,11 +26,15 @@ struct SimmrApp: App {
                 // which otherwise renders light-content-on-light-background
                 // and becomes invisible when the system is in Dark Mode.
                 .preferredColorScheme(.light)
-                // GoogleSignIn's iOS flow redirects back into the app via a
-                // custom URL scheme (REVERSED_CLIENT_ID) — this hands that
-                // callback back to the SDK to complete the sign-in.
+                // Two sources of incoming URLs: our own `simmr://` deep
+                // links (currently just the finished Live Activity's "Rate
+                // it" button — see DeepLinkRouter) and GoogleSignIn's iOS
+                // flow, which redirects back via a custom URL scheme
+                // (REVERSED_CLIENT_ID) to complete the sign-in.
                 .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
+                    if !DeepLinkRouter.shared.handle(url) {
+                        GIDSignIn.sharedInstance.handle(url)
+                    }
                 }
         }
     }

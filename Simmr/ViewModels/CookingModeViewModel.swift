@@ -225,7 +225,7 @@ final class CookingModeViewModel: ObservableObject {
         completedStepIndices.insert(currentStepIndex)
         sessionState = .completed
         persistSnapshot(status: .completed)
-        LiveActivityManager.shared.end()
+        LiveActivityManager.shared.showFinishedPrompt()
     }
 
     /// Called when the user leaves Cooking Mode via any pop — back-swipe, or
@@ -371,6 +371,9 @@ final class CookingModeViewModel: ObservableObject {
     private func startLiveActivity() {
         LiveActivityManager.shared.onExternalStepChange = { [weak self] newIndex in
             self?.applyExternalStepChange(newIndex)
+        }
+        LiveActivityManager.shared.onFinishedExternally = { [weak self] in
+            self?.applyExternalFinish()
         }
         LiveActivityManager.shared.onActivityEndedExternally = { [weak self] in
             self?.applyExternalFinish()

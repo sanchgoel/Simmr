@@ -37,6 +37,7 @@ struct LiveActivityRestoredState {
     let isTimerPaused: Bool
     let pausedRemainingSeconds: Int?
     let isTimerComplete: Bool
+    let isFinished: Bool
 }
 
 @MainActor
@@ -53,8 +54,14 @@ final class LiveActivityManager {
     /// Live Activity Previous/Next tap). The new index is already clamped
     /// to a valid range.
     var onExternalStepChange: ((Int) -> Void)?
-    /// Fired when the Activity ends from outside the app (a Live Activity
-    /// "Finish Recipe" tap).
+    /// Fired when the Live Activity's own "🍽 Finish Recipe" button is
+    /// tapped — the Activity itself doesn't end at this point (see
+    /// showFinishedPrompt()), so this is detected via a content update
+    /// rather than onActivityEndedExternally.
+    var onFinishedExternally: (() -> Void)?
+    /// Fired when the Activity actually ends from outside the app — the
+    /// finished card's "Not now" button, since that's the only remaining
+    /// way to end it without going through the app.
     var onActivityEndedExternally: (() -> Void)?
 
     private init() {}
@@ -90,7 +97,8 @@ final class LiveActivityManager {
             timerEndDate: timerEndDate,
             isTimerPaused: isTimerPaused,
             pausedRemainingSeconds: pausedRemainingSeconds,
-            isTimerComplete: isTimerComplete
+            isTimerComplete: isTimerComplete,
+            isFinished: false
         )
 
         if let existing = Activity<CookingActivityAttributes>.activities.first(where: { $0.attributes.sessionID == sessionID }) {
@@ -131,7 +139,8 @@ final class LiveActivityManager {
             timerEndDate: state.timerEndDate,
             isTimerPaused: state.isTimerPaused,
             pausedRemainingSeconds: state.pausedRemainingSeconds,
-            isTimerComplete: state.isTimerComplete
+            isTimerComplete: state.isTimerComplete,
+            isFinished: state.isFinished
         )
     }
 
@@ -151,9 +160,27 @@ final class LiveActivityManager {
             timerEndDate: timerEndDate,
             isTimerPaused: isTimerPaused,
             pausedRemainingSeconds: pausedRemainingSeconds,
-            isTimerComplete: isTimerComplete
+            isTimerComplete: isTimerComplete,
+            isFinished: false
         )
 
+        Task {
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
+    }
+
+    /// Transitions the running Activity into its "finished" content state
+    /// instead of ending it — lets it show a rate-this-dish card rather than
+    /// disappearing the moment cooking wraps up. Mirrors
+    /// CookingSessionManager.finishRecipe(), the widget-extension-side
+    /// equivalent invoked by the Live Activity's own Finish button.
+    func showFinishedPrompt() {
+        guard let activity else { return }
+        var state = activity.content.state
+        state.isFinished = true
+        state.timerEndDate = nil
+        state.isTimerPaused = false
+        state.pausedRemainingSeconds = nil
         Task {
             await activity.update(ActivityContent(state: state, staleDate: nil))
         }
@@ -176,8 +203,12 @@ final class LiveActivityManager {
         contentObservationTask = Task { [weak self] in
             for await content in activity.contentUpdates {
                 guard let self else { return }
-                let newIndex = content.state.currentStepIndex
-                self.onExternalStepChange?(newIndex)
+                if content.state.isFinished {
+                    self.onFinishedExternally?()
+                } else {
+                    let newIndex = content.state.currentStepIndex
+                    self.onExternalStepChange?(newIndex)
+                }
             }
         }
 

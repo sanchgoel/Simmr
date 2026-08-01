@@ -4,12 +4,14 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct CookingModeView: View {
     @StateObject private var viewModel: CookingModeViewModel
     @Binding var path: [AppRoute]
     @Environment(\.scenePhase) private var scenePhase
     @State private var converterPreset: ConverterPreset?
+    @State private var isShowingFeedbackFlow = false
 
     init(session: RecipeSession, path: Binding<[AppRoute]>, existingCookingSession: CookingSession? = nil) {
         _viewModel = StateObject(wrappedValue: CookingModeViewModel(
@@ -100,6 +102,12 @@ struct CookingModeView: View {
         .sheet(item: $converterPreset) { preset in
             UnitConverterView(options: preset.options, selectedOptionID: preset.selectedOptionID)
         }
+        .onAppear {
+            // Covers resuming a session whose timer was already running
+            // (restored from a persisted CookingSession) — onChange below
+            // only fires on a subsequent start/pause, not on initial state.
+            UIApplication.shared.isIdleTimerDisabled = viewModel.isTimerRunning
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 viewModel.refreshTimerIfNeeded()
@@ -107,11 +115,32 @@ struct CookingModeView: View {
         }
         .onChange(of: viewModel.didFinishExternally) { _, finishedExternally in
             if finishedExternally {
-                path.removeAll()
+                isShowingFeedbackFlow = true
             }
         }
+        .onChange(of: viewModel.isTimerRunning) { _, isRunning in
+            // Keeps the screen awake while a timer is actively counting down,
+            // so glancing at it doesn't require touching the phone every
+            // 30 seconds. Only meaningful while this view is frontmost — the
+            // Live Activity is what keeps the countdown alive once the phone
+            // does lock or the app backgrounds.
+            UIApplication.shared.isIdleTimerDisabled = isRunning
+        }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             viewModel.endCookingSession()
+        }
+        .sheet(isPresented: $isShowingFeedbackFlow, onDismiss: { path.removeAll() }) {
+            PostCookingFeedbackFlowView(
+                recipeTitle: viewModel.recipe.title,
+                cookingSessionID: viewModel.sessionID,
+                startedAt: viewModel.startedAt,
+                onDismiss: { isShowingFeedbackFlow = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Theme.Colors.creamBackground)
+            .interactiveDismissDisabled(false)
         }
     }
 
@@ -208,7 +237,7 @@ struct CookingModeView: View {
     private func advanceOrFinish() {
         if viewModel.isLastStep {
             viewModel.finishCooking()
-            path.removeAll()
+            isShowingFeedbackFlow = true
         } else {
             viewModel.goToNextStep()
         }

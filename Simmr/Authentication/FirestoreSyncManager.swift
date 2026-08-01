@@ -12,6 +12,12 @@
 //    users/{uid}                                — email/displayName/timestamps
 //    users/{uid}/profile/kitchenProfile          — onboarding answers
 //    users/{uid}/cookingSessions/{sessionID}     — recipes + cooking progress
+//    feedbackSubmissions/{feedbackID}            — root-level, not per-user:
+//      the web CMS reads this collection directly for an admin review
+//      dashboard, and a flat top-level collection (matching how
+//      libraryRecipes/recipeCollections are already structured) avoids
+//      needing a Firestore collection-group query for that. Push-only —
+//      nothing in the app itself ever reads feedback back.
 //
 
 import FirebaseAuth
@@ -87,6 +93,81 @@ final class FirestoreSyncManager {
         try? await db.collection("users").document(userID)
             .collection("cookingSessions").document(id.uuidString)
             .delete()
+    }
+
+    // MARK: - Feedback
+
+    /// Root-level, not nested under users/{uid} — see the header comment.
+    /// No-ops when signed out, same as every other sync call here: feedback
+    /// submitted while signed out simply stays local-only, matching how an
+    /// unsigned-in cooking session never syncs either.
+    ///
+    /// Unlike the other sync calls in this file, this one reports through
+    /// APIDebugLogStore (shake to view) even on success — a silently
+    /// swallowed permission-denied here is otherwise completely invisible,
+    /// and this collection has no local-read path to cross-check against.
+    func syncFeedback(_ record: FeedbackRecord) async {
+        let startedAt = Date()
+        print("[FeedbackSync] Attempting sync for \(record.id.uuidString)")
+        guard let db else {
+            print("[FeedbackSync] Skipped — Firestore not configured")
+            APIDebugLogStore.shared.log(APICallLog(
+                timestamp: startedAt, endpoint: "Firestore: feedbackSubmissions", model: nil,
+                requestBody: nil, statusCode: nil,
+                responseBody: nil, error: "Skipped — Firestore not configured",
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+            return
+        }
+        guard let userID else {
+            print("[FeedbackSync] Skipped — no signed-in user")
+            APIDebugLogStore.shared.log(APICallLog(
+                timestamp: startedAt, endpoint: "Firestore: feedbackSubmissions", model: nil,
+                requestBody: nil, statusCode: nil,
+                responseBody: nil, error: "Skipped — no signed-in user",
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+            return
+        }
+        print("[FeedbackSync] db configured, uid=\(userID) — writing...")
+        do {
+            // The plain (non-completion-handler) setData(from:) only throws
+            // on local encoding failure — it queues the write via
+            // Firestore's offline sync engine and returns immediately,
+            // never surfacing a server-side rejection like
+            // permission-denied. Wrapping the completion-handler form in a
+            // continuation instead actually awaits the server's ack, so a
+            // rules rejection shows up here instead of vanishing silently.
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                do {
+                    try db.collection("feedbackSubmissions").document(record.id.uuidString)
+                        .setData(from: record, merge: false) { error in
+                            if let error {
+                                continuation.resume(throwing: error)
+                            } else {
+                                continuation.resume()
+                            }
+                        }
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+            print("[FeedbackSync] SUCCESS — \(record.id.uuidString) written to feedbackSubmissions")
+            APIDebugLogStore.shared.log(APICallLog(
+                timestamp: startedAt, endpoint: "Firestore: feedbackSubmissions", model: nil,
+                requestBody: "id=\(record.id.uuidString) uid=\(userID) rating=\(record.rating)",
+                statusCode: nil, responseBody: "Write succeeded", error: nil,
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+        } catch {
+            print("[FeedbackSync] FAILED — \(error)")
+            APIDebugLogStore.shared.log(APICallLog(
+                timestamp: startedAt, endpoint: "Firestore: feedbackSubmissions", model: nil,
+                requestBody: "id=\(record.id.uuidString) uid=\(userID)",
+                statusCode: nil, responseBody: nil, error: "\(error)",
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+        }
     }
 
     // MARK: - Sign-in

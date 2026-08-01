@@ -18,7 +18,9 @@ struct RootView: View {
     /// comfortably outlasts a local UserDefaults read.
     @State private var restoredState = RestoredLaunchState.none
     @State private var isShowingDebugLog = false
+    @State private var deepLinkFeedbackContext: DeepLinkFeedbackContext?
     @ObservedObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var deepLinkRouter = DeepLinkRouter.shared
     /// Separate from `isOnboardingComplete` so already-onboarded installs
     /// (from before sign-in existed) are prompted exactly once too, not
     /// just fresh ones — set the moment LoginView is skipped or a sign-in
@@ -64,6 +66,43 @@ struct RootView: View {
         .sheet(isPresented: $isShowingDebugLog) {
             APIDebugLogView()
         }
+        .onChange(of: deepLinkRouter.pendingFeedbackSessionID) { _, sessionID in
+            guard let sessionID else { return }
+            deepLinkRouter.pendingFeedbackSessionID = nil
+            Task { await presentFeedbackFlow(forSessionID: sessionID) }
+        }
+        .fullScreenCover(item: $deepLinkFeedbackContext) { context in
+            PostCookingFeedbackFlowView(
+                recipeTitle: context.recipeTitle,
+                cookingSessionID: context.cookingSessionID,
+                startedAt: context.startedAt,
+                onDismiss: {
+                    deepLinkFeedbackContext = nil
+                    LiveActivityManager.shared.end()
+                }
+            )
+        }
+    }
+
+    /// Opened by the finished Live Activity's "Rate it" deep link — may run
+    /// with no CookingModeViewModel alive (the app could've been fully
+    /// killed when cooking finished), so this looks the session up fresh
+    /// from local storage rather than relying on any in-memory state.
+    private func presentFeedbackFlow(forSessionID sessionID: UUID) async {
+        let repository = LocalCookingSessionRepository()
+        guard var session = try? await repository.fetchAllSessions().first(where: { $0.id == sessionID }) else { return }
+
+        if session.status != .completed {
+            session.status = .completed
+            session.updatedAt = Date()
+            try? await repository.save(session)
+        }
+
+        deepLinkFeedbackContext = DeepLinkFeedbackContext(
+            recipeTitle: session.recipe.title,
+            cookingSessionID: session.id,
+            startedAt: session.startedAt
+        )
     }
 
     @ViewBuilder
@@ -80,6 +119,16 @@ struct RootView: View {
             MainTabView(initialHomePath: restoredState.path)
         }
     }
+}
+
+/// Feeds `PostCookingFeedbackFlowView`'s init from a deep-link-resolved
+/// CookingSession — `id` is the session's own id so `.fullScreenCover(item:)`
+/// can key off it directly.
+private struct DeepLinkFeedbackContext: Identifiable {
+    let recipeTitle: String
+    let cookingSessionID: UUID
+    let startedAt: Date
+    var id: UUID { cookingSessionID }
 }
 
 #Preview {
