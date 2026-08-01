@@ -14,12 +14,30 @@
 //  timer's own progress — that's handled by `flipStartDate` + a dedicated
 //  Task, decoupled from rendering.
 //
+//  Deliberately lightweight by design: every action (Start/Pause/Reset/
+//  Continue/Restart) is a small pill button, not a full-width one — the
+//  timer is a helper alongside the recipe content, not the screen's main
+//  focus. See CookingModeView, which docks Previous/Next as floating
+//  circular buttons instead of stacking full-width nav under this card, for
+//  the same reason.
+//
 
 import AVFoundation
 import SwiftUI
 import UIKit
 
-private let hourglassFlipDuration: Double = 0.9
+private let hourglassFlipDuration: Double = 0.75
+/// Below this many seconds remaining, the sand-flow and breathing animations
+/// speed up so the final stretch always reads as visibly more urgent.
+private let urgentThresholdSeconds = 5
+/// Fixed content width of the timer card — sized to comfortably fit its
+/// widest state (Complete's "Continue"/"Restart" pill pair) with room to
+/// spare, so the card never visibly resizes as it moves between idle,
+/// running, paused, and complete.
+private let timerCardWidth: CGFloat = 280
+/// Fixed height of the row below the hourglass/time display — see the
+/// comment where it's applied for why.
+private let timerControlRowHeight: CGFloat = 58
 
 struct TimerControl: View {
     let remaining: Int
@@ -44,12 +62,24 @@ struct TimerControl: View {
         max(0, min(1, 1 - progress))
     }
 
+    private var isUrgent: Bool {
+        isRunning && remaining > 0 && remaining <= urgentThresholdSeconds
+    }
+
     @State private var glowOpacity: Double = 0
     @State private var wobbleAngle: Double = 0
+    @State private var textPopScale: Double = 1
     @State private var showCompletionContent = false
+    @State private var showFinishedBanner = false
     @State private var didCelebrate = false
     @State private var audioPlayer: AVAudioPlayer?
     @State private var flipStartDate: Date?
+    /// Decorative "kick" spin around the vertical axis, played once on Start
+    /// or plain Reset — distinct from `flipStartDate`'s 180° tumble, which
+    /// only looks correct swapping a fully-settled top/bottom (Restart, from
+    /// Complete). A mid-run partial fill doesn't have that symmetry, so
+    /// Start/Reset get a lighter spin flourish instead of a literal tumble.
+    @State private var spinDegrees: Double = 0
 
     var body: some View {
         VStack(spacing: Theme.Spacing.sm) {
@@ -68,18 +98,34 @@ struct TimerControl: View {
                             .monospacedDigit()
                             .contentTransition(.numericText(countsDown: true))
                             .animation(.snappy(duration: 0.35), value: remaining)
+                            .scaleEffect(textPopScale)
                             .minimumScaleFactor(0.7)
                             .lineLimit(1)
 
                         stepperButton(systemImage: "plus", action: onIncrementMinute, isEnabled: true)
                     }
                 }
-
-                Spacer(minLength: 0)
             }
 
             controlRow
+                // Fixed height too, for the same reason as timerCardWidth
+                // below — Idle/Complete's pill row and the running/paused
+                // circular-buttons-with-labels row are naturally different
+                // heights, so without this the whole card would grow/shrink
+                // vertically as the timer moves between states. Centering
+                // within this fixed slot replaces the per-branch top-padding
+                // this used to have, so spacing above the shorter rows stays
+                // consistent instead of compounding with it.
+                .frame(height: timerControlRowHeight)
         }
+        // Fixed width, not hug-content — Idle's single "Start" pill, the
+        // running/paused pair of circular icon buttons, and Complete's
+        // "Continue"/"Restart" pills are all different natural widths, and
+        // a hug-content card would visibly resize every time the state
+        // changes. Pinning it here instead keeps the card's footprint
+        // constant; the VStack's default center alignment centers whichever
+        // row is narrower than this within it.
+        .frame(width: timerCardWidth)
         .padding(Theme.Spacing.sm)
         .background(Theme.Colors.creamCard)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
@@ -87,6 +133,13 @@ struct TimerControl: View {
             RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                 .strokeBorder(Theme.Colors.border, lineWidth: Theme.Stroke.hairline)
         )
+        .overlay(alignment: .top) {
+            if showFinishedBanner {
+                finishedBanner
+                    .offset(y: -20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .onAppear {
             if isComplete {
                 didCelebrate = true
@@ -117,10 +170,12 @@ struct TimerControl: View {
             HourglassView(
                 topFraction: topFraction,
                 isAnimating: isRunning,
+                isUrgent: isUrgent,
                 flipStartDate: flipStartDate
             )
             .frame(width: 42, height: isRunning ? 58 : 54)
             .rotationEffect(.degrees(wobbleAngle))
+            .rotation3DEffect(.degrees(spinDegrees), axis: (x: 0, y: 1, z: 0))
         }
         .frame(width: 56, height: 62)
     }
@@ -137,6 +192,20 @@ struct TimerControl: View {
             }
         }
         .transition(.scale.combined(with: .opacity))
+    }
+
+    private var finishedBanner: some View {
+        HStack(spacing: Theme.Spacing.xxs) {
+            Image(systemName: "bell.fill")
+            Text("Timer Finished")
+        }
+        .font(Theme.Typography.footnote.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.xs)
+        .background(Theme.Colors.coral)
+        .clipShape(Capsule())
+        .shadow(color: Theme.Colors.textDark.opacity(0.25), radius: 8, x: 0, y: 3)
     }
 
     // MARK: - Controls
@@ -156,32 +225,96 @@ struct TimerControl: View {
         .disabled(!isEnabled)
     }
 
+    /// True once a timer has been started and then paused (some time has
+    /// elapsed), as opposed to never having been touched this step — both
+    /// present as `isRunning == false, isComplete == false` to this view,
+    /// but only the former should offer Resume+Reset instead of Start.
+    /// `progress` is exactly 0 only in the untouched-idle case (see
+    /// CookingModeViewModel.timerProgress), so it's a reliable signal
+    /// without needing a dedicated prop.
+    private var isPaused: Bool {
+        !isRunning && !isComplete && progress > 0
+    }
+
     @ViewBuilder
     private var controlRow: some View {
         if isComplete {
-            VStack(spacing: Theme.Spacing.xs) {
-                Button("Continue", action: onContinue)
-                    .buttonStyle(.primary)
-                Button("Restart Timer", action: restartTimer)
-                    .buttonStyle(.secondary)
-            }
-        } else if isRunning {
             HStack(spacing: Theme.Spacing.sm) {
-                Button("Pause", action: onPause)
-                    .buttonStyle(.secondary)
-                Button("Reset", action: onReset)
-                    .buttonStyle(.secondary)
+                Button(action: onContinue) {
+                    Label("Continue", systemImage: "arrow.right")
+                }
+                .buttonStyle(CompactPillButtonStyle(isProminent: true))
+
+                Button(action: restartTimer) {
+                    Label("Restart", systemImage: "arrow.counterclockwise")
+                }
+                .buttonStyle(CompactPillButtonStyle(isProminent: false))
+            }
+        } else if isRunning || isPaused {
+            HStack(spacing: Theme.Spacing.lg) {
+                if isRunning {
+                    circularActionButton(systemImage: "pause.fill", label: "Pause", isProminent: true, action: onPause)
+                } else {
+                    circularActionButton(systemImage: "play.fill", label: "Resume", isProminent: true) {
+                        spinAndPerform(onStart)
+                    }
+                }
+                circularActionButton(systemImage: "arrow.counterclockwise", label: "Reset", isProminent: false) {
+                    spinAndPerform(onReset)
+                }
             }
         } else {
-            Button("Start Timer", action: onStart)
-                .buttonStyle(.primary)
+            Button(action: { spinAndPerform(onStart) }) {
+                Label("Start", systemImage: "play.fill")
+            }
+            .buttonStyle(CompactPillButtonStyle(isProminent: true))
+            .frame(minWidth: 130)
         }
+    }
+
+    /// Small circular icon button with a caption underneath — used for
+    /// Pause/Resume and Reset while a timer is running or paused, so they
+    /// read as a lightweight, connected control cluster rather than a row
+    /// of large standalone buttons.
+    private func circularActionButton(systemImage: String, label: String, isProminent: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: Theme.Spacing.xxs) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isProminent ? .white : Theme.Colors.textDark)
+                    .frame(width: 40, height: 40)
+                    .background(isProminent ? Theme.Colors.coral : Theme.Colors.creamBackground)
+                    .overlay(
+                        Circle().strokeBorder(isProminent ? Color.clear : Theme.Colors.border, lineWidth: Theme.Stroke.hairline)
+                    )
+                    .clipShape(Circle())
+
+                Text(label)
+                    .font(Theme.Typography.caption2)
+                    .foregroundStyle(Theme.Colors.textMuted)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var formattedTime: String {
         let minutes = remaining / 60
         let seconds = remaining % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    // MARK: - Start / Reset spin
+
+    /// Plays the lighter "kick" spin (see `spinDegrees`'s doc comment) and
+    /// then performs the actual state change — shared by Start and the
+    /// running state's Reset, the two actions that begin a fresh countdown
+    /// from a state where a literal chamber-swap tumble wouldn't read
+    /// correctly.
+    private func spinAndPerform(_ action: () -> Void) {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+            spinDegrees += 360
+        }
+        action()
     }
 
     // MARK: - Restart flip
@@ -205,8 +338,9 @@ struct TimerControl: View {
 
     // MARK: - Completion celebration
 
-    /// One-shot: a brief pause, a subtle wobble, a bell chime, a strong
-    /// haptic, and a soft coral glow — before settling into the checkmark +
+    /// One-shot: a brief pause, 2-3 quick shakes with a bouncing timer text,
+    /// a bell chime, a strong haptic, a soft coral glow, and a transient
+    /// "Timer Finished" banner — before settling into the checkmark +
     /// "Time's Up" state. Guarded by `didCelebrate` so a view recreated
     /// while already complete never replays this.
     private func celebrate() {
@@ -219,19 +353,31 @@ struct TimerControl: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
                 glowOpacity = 0.5
             }
-            withAnimation(.spring(response: 0.18, dampingFraction: 0.32)) {
-                wobbleAngle = 7
+            withAnimation(.spring(response: 0.16, dampingFraction: 0.3)) {
+                wobbleAngle = 9
             }
-            try? await Task.sleep(nanoseconds: 130_000_000)
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.3)) {
-                wobbleAngle = -6
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.4)) {
+                textPopScale = 1.3
             }
-            try? await Task.sleep(nanoseconds: 130_000_000)
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            try? await Task.sleep(nanoseconds: 110_000_000)
+            withAnimation(.spring(response: 0.17, dampingFraction: 0.3)) {
+                wobbleAngle = -8
+            }
+            try? await Task.sleep(nanoseconds: 110_000_000)
+            withAnimation(.spring(response: 0.17, dampingFraction: 0.32)) {
+                wobbleAngle = 6
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.42)) {
                 wobbleAngle = 0
+                textPopScale = 1
             }
 
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                showFinishedBanner = true
+            }
 
             try? await Task.sleep(nanoseconds: 200_000_000)
             withAnimation(.easeOut(duration: 0.6)) {
@@ -239,6 +385,11 @@ struct TimerControl: View {
             }
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 showCompletionContent = true
+            }
+
+            try? await Task.sleep(nanoseconds: 2_300_000_000)
+            withAnimation(.easeOut(duration: 0.35)) {
+                showFinishedBanner = false
             }
         }
     }
@@ -252,15 +403,39 @@ struct TimerControl: View {
     }
 }
 
+/// Small pill button used for every timer action (Start/Pause/Reset/
+/// Continue/Restart) — deliberately not full-width, so the timer card never
+/// reads as the screen's dominant element the way a full-width primary
+/// button would.
+private struct CompactPillButtonStyle: ButtonStyle {
+    let isProminent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Theme.Typography.footnote.weight(.semibold))
+            .foregroundStyle(isProminent ? .white : Theme.Colors.textDark)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.xs)
+            .background(
+                Capsule().fill(isProminent ? Theme.Colors.coral.opacity(configuration.isPressed ? 0.85 : 1) : Theme.Colors.creamBackground)
+            )
+            .overlay(
+                Capsule().strokeBorder(isProminent ? Color.clear : Theme.Colors.border, lineWidth: Theme.Stroke.hairline)
+            )
+    }
+}
+
 /// The custom-drawn hourglass itself — top chamber draining, bottom chamber
 /// filling, with a falling sand stream and a subtle breathe/rock while
-/// running, and a manual 180° tumble for the restart flip. Rendered as a
-/// single static `Canvas` when nothing is animating (idle/paused/complete)
-/// to avoid any unnecessary redraw work, and only switches to
-/// `TimelineView(.animation)` while running or mid-flip.
+/// running (both speeding up once `isUrgent`), and a manual 180° tumble for
+/// the restart flip. Rendered as a single static `Canvas` when nothing is
+/// animating (idle/paused/complete) to avoid any unnecessary redraw work,
+/// and only switches to `TimelineView(.animation)` while running or
+/// mid-flip.
 private struct HourglassView: View {
     let topFraction: Double
     let isAnimating: Bool
+    let isUrgent: Bool
     let flipStartDate: Date?
 
     var body: some View {
@@ -293,11 +468,14 @@ private struct HourglassView: View {
     }
 
     private func breatheScale(date: Date) -> CGFloat {
-        1 + 0.02 * sin(date.timeIntervalSinceReferenceDate * 2 * .pi / 2.6)
+        let period = isUrgent ? 1.1 : 2.0
+        return 1 + 0.025 * sin(date.timeIntervalSinceReferenceDate * 2 * .pi / period)
     }
 
     private func rockAngle(date: Date) -> Double {
-        2.0 * sin(date.timeIntervalSinceReferenceDate * 2 * .pi / 3.4 + 0.7)
+        let period = isUrgent ? 1.4 : 2.6
+        let amplitude = isUrgent ? 3.0 : 2.2
+        return amplitude * sin(date.timeIntervalSinceReferenceDate * 2 * .pi / period + 0.7)
     }
 
     private func draw(context: GraphicsContext, size: CGSize, date: Date, isFlipping: Bool) {
@@ -372,23 +550,27 @@ private struct HourglassView: View {
             // motion the spec asks for during the tumble.
             let streamBottom = neckY + h * 0.14
             for i in 0..<3 {
-                let p = (phase * 3.2 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
+                let p = (phase * 3.8 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
                 let y = neckY + (streamBottom - neckY) * p
-                let grain = Path(ellipseIn: CGRect(x: midX - 1, y: y, width: 2, height: 2))
+                let grain = Path(ellipseIn: CGRect(x: midX - 1.2, y: y, width: 2.4, height: 2.4))
                 context.fill(grain, with: .color(Theme.Colors.amber.opacity(0.85)))
             }
         } else if isAnimating, f > 0.01, g < 0.99 {
+            // A brisk, clearly-visible pour: bigger/brighter grains than a
+            // subtle trickle, a solid (not faint) connecting stream, and
+            // both speeding up further once isUrgent kicks in.
+            let fallSpeed = isUrgent ? 4.5 : 2.4
             let streamBottom = max(neckY + 2, bottomFillY0)
             for i in 0..<3 {
-                let p = (phase * 1.7 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
+                let p = (phase * fallSpeed + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
                 let y = neckY + (streamBottom - neckY) * p
-                let grain = Path(ellipseIn: CGRect(x: midX - 1, y: y, width: 2, height: 2))
-                context.fill(grain, with: .color(Theme.Colors.amber.opacity(0.9)))
+                let grain = Path(ellipseIn: CGRect(x: midX - 1.3, y: y, width: 2.6, height: 2.6))
+                context.fill(grain, with: .color(Theme.Colors.amber.opacity(0.95)))
             }
             var streamLine = Path()
             streamLine.move(to: CGPoint(x: midX, y: neckY))
             streamLine.addLine(to: CGPoint(x: midX, y: streamBottom))
-            context.stroke(streamLine, with: .color(Theme.Colors.amber.opacity(0.3)), lineWidth: 1)
+            context.stroke(streamLine, with: .color(Theme.Colors.amber.opacity(0.55)), lineWidth: 1.6)
         }
 
         context.stroke(outline, with: .color(Theme.Colors.textDark.opacity(0.5)), lineWidth: 1.5)
@@ -412,6 +594,19 @@ private struct HourglassView: View {
     TimerControl(
         remaining: 95,
         progress: 0.47,
+        isRunning: true,
+        isComplete: false,
+        canDecreaseMinute: true,
+        onStart: {}, onPause: {}, onReset: {}, onIncrementMinute: {}, onDecrementMinute: {}, onContinue: {}
+    )
+    .padding()
+    .background(Theme.Colors.creamBackground)
+}
+
+#Preview("Urgent") {
+    TimerControl(
+        remaining: 4,
+        progress: 0.98,
         isRunning: true,
         isComplete: false,
         canDecreaseMinute: true,

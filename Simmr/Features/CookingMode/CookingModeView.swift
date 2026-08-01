@@ -71,21 +71,29 @@ struct CookingModeView: View {
                             onDecrementMinute: viewModel.decrementTimerMinute,
                             onContinue: advanceOrFinish
                         )
+                        .frame(maxWidth: .infinity)
                         .padding(.top, Theme.Spacing.sm)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Spacing.lg)
+                // Clears the floating nav buttons docked in the .overlay
+                // below — the buttons live outside the VStack's layout flow
+                // (so they never eat into the recipe content's vertical
+                // space), but scrolled content still needs room to not end
+                // up underneath them.
+                .padding(.bottom, floatingNavButtonSize + Theme.Spacing.lg)
                 .id(viewModel.stepNumber)
                 .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
             .animation(.easeInOut(duration: 0.2), value: viewModel.stepNumber)
-
-            navigationButtons
-                .padding(.horizontal, Theme.Spacing.lg)
-                .padding(.bottom, Theme.Spacing.md)
         }
         .background(Theme.Colors.creamBackground.ignoresSafeArea())
+        .overlay(alignment: .bottom) {
+            navigationButtons
+                .padding(.horizontal, Theme.Spacing.lg)
+                .padding(.bottom, Theme.Spacing.sm)
+        }
         .navigationTitle("Cooking")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
@@ -217,18 +225,57 @@ struct CookingModeView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
     }
 
+    /// Diameter of the floating Previous/Next buttons — also used to size the
+    /// scroll content's bottom clearance so nothing ends up hidden underneath them.
+    private let floatingNavButtonSize: CGFloat = 54
+
     private var navigationButtons: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Button("Previous") {
+        HStack {
+            // White, not coral — reads as the secondary/back action next to
+            // Next's coral primary, rather than two identical buttons that
+            // only differ by icon direction.
+            floatingNavButton(
+                systemImage: "chevron.left",
+                fill: .white,
+                foreground: Theme.Colors.textDark,
+                isEnabled: !viewModel.isFirstStep
+            ) {
                 viewModel.goToPreviousStep()
             }
-            .buttonStyle(.secondary)
-            .disabled(viewModel.isFirstStep)
-            .opacity(viewModel.isFirstStep ? 0.5 : 1)
 
-            Button(viewModel.isLastStep ? "Finish" : "Next", action: advanceOrFinish)
-                .buttonStyle(.primary)
+            Spacer()
+
+            floatingNavButton(
+                systemImage: viewModel.isLastStep ? "checkmark" : "chevron.right",
+                fill: Theme.Colors.coral,
+                foreground: .white
+            ) {
+                advanceOrFinish()
+            }
         }
+    }
+
+    private func floatingNavButton(
+        systemImage: String,
+        fill: Color,
+        foreground: Color,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(foreground)
+                .frame(width: floatingNavButtonSize, height: floatingNavButtonSize)
+                .background(fill)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().strokeBorder(Theme.Colors.border, lineWidth: fill == .white ? Theme.Stroke.hairline : 0)
+                )
+                .shadow(color: Theme.Colors.textDark.opacity(0.22), radius: 10, x: 0, y: 4)
+        }
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.4)
     }
 
     /// Advances to the next step, or finishes the recipe on the last step —
